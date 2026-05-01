@@ -1,20 +1,16 @@
-/* Copyright (c) 2016 
-	Andrey Mikhalevich, Katren ltd.
-*/
-/*	
-	Description
-*/
-/** Requirements
- * @requires 
- * @requires core/extend.js  
-*/
+/**	
+ * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2017
 
-/* constructor
-@param string id
-@param object options{
+ * @extends EditPeriodDate
+ * @requires core/extend.js
+ * @requires consols/EditPeriodDate.js     
 
-}
-*/
+ * @class
+ * @classdesc
+ 
+ * @param {string} id - Object identifier
+ * @param {object} options
+ */
 function EditPeriodDateTime(id,options){
 	options = options || {};	
 	options.editClass = EditDateTime;

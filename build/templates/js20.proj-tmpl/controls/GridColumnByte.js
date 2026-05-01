@@ -1,8 +1,9 @@
 /**	
  * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2016
 
- * @extends
- * @requires
+ * @extends GridColumn
+ * @requires core/extend.js 
+ * @requires GridColumn.js
 
  * @class
  * @classdesc

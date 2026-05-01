@@ -1,11 +1,8 @@
 /**	
  * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2016
 
- * @extends
- * @requires
-
  * @class
- * @classdesc
+ * @classdesc basic validator class
  
  * @param {Object} options
  * @param {int} options.minLength

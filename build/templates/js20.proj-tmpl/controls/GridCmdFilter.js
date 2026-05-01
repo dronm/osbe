@@ -63,16 +63,18 @@ GridCmdFilter.prototype.setFilterVisibile = function(v){
 }
 
 GridCmdFilter.prototype.afterFilterSet = function(setCnt){
+	var btn = this.getControl();
 	var cl_old,cl_new;
 	if (setCnt){
 		cl_new = this.BTN_CLASS_SET;
-		cl_old = this.BTN_CLASS_UNSET;
+		cl_old = btn.getColorClass();
 	}
 	else{
-		cl_new = this.BTN_CLASS_UNSET;
+		cl_new = btn.getColorClass();
 		cl_old = this.BTN_CLASS_SET;		
 	}
-	DOMHelper.swapClasses(this.getControl().getNode(),cl_new,cl_old);
+	DOMHelper.swapClasses(btn.getNode(),cl_new,cl_old);
+	
 }
 
 GridCmdFilter.prototype.refreshGrid = function(){
@@ -81,9 +83,15 @@ GridCmdFilter.prototype.refreshGrid = function(){
 		pag.reset();
 	}						
 	var self = this;
-	this.m_grid.onRefresh(function(){
-		self.setFilterVisibile(false);
-	});
+	window.setGlobalWait(true);
+	this.m_grid.onRefresh(
+		function(){
+			self.setFilterVisibile(false);
+		},null,
+		function(){
+			window.setGlobalWait(false);
+		}
+	);
 }
 
 GridCmdFilter.prototype.onCommand = function(e){
@@ -97,6 +105,7 @@ GridCmdFilter.prototype.onCommand = function(e){
 		var self = this;
 		this.m_pop = new PopOver(this.m_id+":popover",{
 			"caption":this.TITLE,
+			"zIndex":"2000",
 			"className":window.getBsCol(8),
 			"contentElements":[
 				new GridCmdFilterView(this.m_id+":popover:cont",{
@@ -110,7 +119,7 @@ GridCmdFilter.prototype.onCommand = function(e){
 						/*
 						if (cnt){
 							self.m_variantStorage.model.setFieldValue("filter_data",
-								self.m_filter.serialize()
+								self.m_filter.getValue()
 							);
 						}
 						*/
@@ -187,7 +196,9 @@ GridCmdFilter.prototype.setControlOpen = function(v){
 
 GridCmdFilter.prototype.unserializeFilters = function(){
 	if (this.m_variantStorage && this.m_variantStorage.model){
-		var cnt = this.m_filter.unserialize(this.m_variantStorage.model.getFieldValue("filter_data"));
+	//console.log("GridCmdFilter.prototype.unserializeFilters setting filter value")
+	//console.dir(this.m_variantStorage.model.getFieldValue("filter_data"))
+		var cnt = this.m_filter.setValue(this.m_variantStorage.model.getFieldValue("filter_data"));
 		this.afterFilterSet(cnt);
 	
 		if (cnt && this.m_grid){
@@ -204,8 +215,10 @@ GridCmdFilter.prototype.setGrid = function(v){
 
 GridCmdFilter.prototype.onDelDOM = function(){
 	if (this.m_pop){
-		//console.log("GridCmdFilter.prototype.onDelDOM")
 		this.m_pop.delDOM();
 		delete this.m_pop;
 	}
+}
+GridCmdFilter.prototype.setFilterInfo = function(v){
+	this.m_filterInfo = v;
 }

@@ -20,6 +20,9 @@ function ButtonInsert(id,options){
 	
 	var self = this;
 	
+	this.m_editWinClass = options.editWinClass;
+	this.m_editViewOptions = options.editViewOptions;
+	
 	options.onClick = options.onClick || 
 			function(event){
 				self.doInsert(EventHelper.fixMouseEvent(event));
@@ -27,8 +30,20 @@ function ButtonInsert(id,options){
 
 	ButtonInsert.superclass.constructor.call(this,id,options);
 }
-extend(ButtonInsert,ButtonCtrl);
+extend(ButtonInsert, ButtonCtrl);
+
+ButtonInsert.prototype.m_editForm;
 
 ButtonInsert.prototype.doInsert = function(e){
-	console.log("ButtonInsert.prototype.openInsert");
+	if(!this.m_editWinClass){
+		throw new Error("editWinClass is not defined");
+	}
+	this.m_editForm = new this.m_editWinClass({
+		"id":CommonHelper.uniqid(),
+		"params":{
+			"cmd":"insert"
+			,"editViewOptions": this.m_editViewOptions
+		}
+	});
+	this.m_editForm.open();
 }

@@ -12,9 +12,9 @@ class ModelSQLDOCT20 extends ModelSQL{
 		$this->getFieldById('login_id')->setValue($_SESSION['LOGIN_ID']);
 	}
 	
-	public function insert($needId=FALSE){
+	public function insert($needId=FALSE, $row=NULL){
 		$this->correct_keys();
-		return parent::insert($needId);
+		return parent::insert($needId, $row);
 	}
 			
 	public function update(){

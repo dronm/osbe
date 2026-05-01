@@ -27,6 +27,18 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
 <xsl:variable name="DT_PWD" select="'14'"/>
 <xsl:variable name="DT_EMAIL" select="'15'"/>
 <xsl:variable name="DT_ENUM" select="'16'"/>
+<xsl:variable name="DT_GEOM_POLYGON" select="'17'"/>
+<xsl:variable name="DT_GEOM_POINT" select="'18'"/>
+<xsl:variable name="DT_INTERVAL" select="'19'"/>
+<xsl:variable name="DT_DATETIMETZ" select="'20'"/>
+<xsl:variable name="DT_JSON" select="'21'"/>
+<xsl:variable name="DT_JSONB" select="'22'"/>
+<xsl:variable name="DT_ARRAY" select="'23'"/>
+<xsl:variable name="DT_XML" select="'24'"/>
+<xsl:variable name="DT_INT_BIG" select="'25'"/>
+<xsl:variable name="DT_INT_SMALL" select="'26'"/>
+<xsl:variable name="DT_BYTEA" select="'27'"/>
+
 
 <!-- default widths for data types in px-->
 <xsl:variable name="DEF_WIDTH_DATE" select="100"/>
@@ -71,6 +83,39 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
   </xsl:choose>
 </xsl:template>
 
+<xsl:template name="format_date">
+	<xsl:param name="val"/>
+	<xsl:param name="formatStr"/>
+	<xsl:choose>
+		<xsl:when test="string-length($val)=10">
+			<xsl:variable name="val_year" select="substring-before($val,'-')"/>
+			<xsl:variable name="part_month" select="substring-after($val,'-')"/>
+			<xsl:variable name="val_month" select="substring-before($part_month,'-')"/>
+			<xsl:variable name="part_date" select="substring-after($part_month,'-')"/>
+			<xsl:variable name="val_date" select="$part_date"/>
+			<xsl:value-of select="concat($val_date,'/',$val_month,'/',$val_year)" />
+		</xsl:when>
+		<xsl:otherwise>
+			<xsl:value-of select="$val" />
+		</xsl:otherwise>
+	</xsl:choose>
+</xsl:template>
+
+<!--
+<xsl:template name="format_json">
+	<xsl:param name="val"/>
+	<xsl:variable name="mark_beg" value="&quot;descr&quot; : "/>
+	<xsl:variable name="mark_end" value="&quot;, &quot;dataType&quot;"/>
+	<xsl:choose>
+		<xsl:when test="contains($val, $replace)">
+		</xsl:when>
+		<xsl:otherwise>
+			<xsl:value-of select="$val" />
+		</xsl:otherwise>		
+	</xsl:choose>
+	<xsl:value-of select="'XXX'" />
+</xsl:template>
+-->
 <!-- Main template-->
 <xsl:template match="/">
 	<xsl:processing-instruction
@@ -131,7 +176,8 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
 				<NumberFormat ss:Format="dd/mm/yy\ h:mm;@"/>
 			</Style>			
 			<Style ss:ID="s25">
-				<NumberFormat ss:Format="dd/mm/yy;@"/>
+				<!-- dd/mm/yy;@ -0 -->
+				<NumberFormat ss:Format="Short Date"/>
 			</Style>			
 			<Style ss:ID="s26">
 				<NumberFormat ss:Format="0"/>
@@ -180,7 +226,7 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
 						<!-- Либо нет метеданных либо колонка не системная -->
 						<xsl:variable name="len">
 							<xsl:choose>
-								<xsl:when test="$metadata and not($metadata/@sysCol='TRUE') and $metadata/@dataType=$DT_INT">
+								<xsl:when test="$metadata and not($metadata/@sysCol='TRUE') and ($metadata/@dataType=$DT_INT or $metadata/@dataType=$DT_INT_BIG or $metadata/@dataType=$DT_INT_SMALL)">
 									<xsl:value-of select="$DEF_WIDTH_INT"/>
 								</xsl:when>
 								<xsl:when test="$metadata and not($metadata/@sysCol='TRUE') and $metadata/@dataType=$DT_DATE">
@@ -189,7 +235,7 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
 								<xsl:when test="$metadata and not($metadata/@sysCol='TRUE') and $metadata/@dataType=$DT_TIME">
 									<xsl:value-of select="$DEF_WIDTH_TIME"/>
 								</xsl:when>					
-								<xsl:when test="$metadata and not($metadata/@sysCol='TRUE') and $metadata/@dataType=$DT_DATETIME">
+								<xsl:when test="$metadata and not($metadata/@sysCol='TRUE') and ($metadata/@dataType=$DT_DATETIME or $metadata/@dataType=$DT_DATETIMETZ)">
 									<xsl:value-of select="$DEF_WIDTH_DATETIME"/>
 								</xsl:when>
 								<xsl:when test="$metadata and not($metadata/@sysCol='TRUE') and $metadata/@dataType=$DT_FILE">
@@ -253,20 +299,20 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
 								
 								<xsl:variable name="excel_style_id">		
 									<xsl:choose>
-										<xsl:when test="$field_dt=$DT_INT or $field_dt=$DT_INT_UNSIGNED"><xsl:value-of select="$EXCEl_STYLE_ID_INT"/></xsl:when>
+										<xsl:when test="$field_dt=$DT_INT or $field_dt=$DT_INT_UNSIGNED or $field_dt=$DT_INT_BIG or $field_dt=$DT_INT_SMALL"><xsl:value-of select="$EXCEl_STYLE_ID_INT"/></xsl:when>
 										
 										<xsl:when test="$field_dt=$DT_CUR_RUR or $field_dt=$DT_CUR_USD"><xsl:value-of select="$EXCEl_STYLE_ID_MONEY"/></xsl:when>
 										<xsl:when test="$field_dt=$DT_FLOAT or $field_dt=$DT_FLOAT_UNSIGNED"><xsl:value-of select="$EXCEl_STYLE_ID_FLOAT"/></xsl:when>
-										<xsl:when test="$field_dt=$DT_DATETIME"><xsl:value-of select="$EXCEl_STYLE_ID_DATETIME"/></xsl:when>
+										<xsl:when test="$field_dt=$DT_DATETIME or $field_dt=$DT_DATETIMETZ"><xsl:value-of select="$EXCEl_STYLE_ID_DATETIME"/></xsl:when>
 										<xsl:when test="$field_dt=$DT_DATE"><xsl:value-of select="$EXCEl_STYLE_ID_DATE"/></xsl:when>
 										<xsl:otherwise><xsl:value-of select="$EXCEl_STYLE_ID_STRING"/></xsl:otherwise>
 									</xsl:choose>
 								</xsl:variable>
 								<xsl:variable name="excel_data_type">
 									<xsl:choose>
-										<xsl:when test="$field_dt=$DT_INT or $field_dt=$DT_INT_UNSIGNED"><xsl:value-of select="$EXCEl_DT_INT"/></xsl:when>
+										<xsl:when test="$field_dt=$DT_INT or $field_dt=$DT_INT_UNSIGNED or $field_dt=$DT_INT_BIG or $field_dt=$DT_INT_SMALL"><xsl:value-of select="$EXCEl_DT_INT"/></xsl:when>
 										<xsl:when test="$field_dt=$DT_FLOAT or $field_dt=$DT_FLOAT_UNSIGNED"><xsl:value-of select="$EXCEl_DT_FLOAT"/></xsl:when>
-										<xsl:when test="$field_dt=$DT_DATETIME"><xsl:value-of select="$EXCEl_DT_DATETIME"/></xsl:when>
+										<xsl:when test="$field_dt=$DT_DATETIME or $field_dt=$DT_DATETIMETZ"><xsl:value-of select="$EXCEl_DT_DATETIME"/></xsl:when>
 										<xsl:when test="$field_dt=$DT_DATE"><xsl:value-of select="$EXCEl_DT_DATE"/></xsl:when>
 										<xsl:otherwise><xsl:value-of select="$EXCEl_DT_STRING"/></xsl:otherwise>
 									</xsl:choose>
@@ -277,6 +323,34 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
 									<xsl:choose>
 										<xsl:when test="$field_dt=$DT_BOOL and node()='true'"><xsl:value-of select="'да'"/></xsl:when>
 										<xsl:when test="$field_dt=$DT_BOOL and node()='false'"><xsl:value-of select="'нет'"/></xsl:when>
+										<xsl:when test="$field_dt=$DT_JSON and node()='false'"><xsl:value-of select="'нет'"/></xsl:when>
+										
+										<xsl:when test="($field_dt=$DT_DATETIME or $field_dt=$DT_DATETIMETZ) and string-length(node())=0">
+											<xsl:value-of select="'1970-01-01T00:00:00'"/>
+										</xsl:when>
+										<xsl:when test="($field_dt=$DT_DATETIME or $field_dt=$DT_DATETIMETZ) and string-length(substring-before(node(),'+'))&gt;0">
+											<xsl:value-of select="substring-before(node(),'+')"/>
+										</xsl:when>
+										
+										<xsl:when test="$field_dt=$DT_DATE">
+											<xsl:value-of select="concat(node(),'T00:00:00.000')"/>
+										</xsl:when>
+										
+										<!--
+										<xsl:when test="$field_dt=$DT_DATE">
+											<xsl:call-template name="format_date">
+												<xsl:with-param name="val" select="node()" />
+												<xsl:with-param name="formatStr" select="''" />
+											</xsl:call-template>		
+										</xsl:when>
+										-->
+										<!--
+										<xsl:when test="$field_dt=$DT_JSON or $field_dt=$DT_JSONB">
+											<xsl:call-template name="format_json">
+												<xsl:with-param name="val" select="node()" />
+											</xsl:call-template>		
+										</xsl:when>							
+										-->			
 										<xsl:otherwise><xsl:value-of select="node()"/></xsl:otherwise>
 									</xsl:choose>
 								</xsl:variable>
@@ -316,7 +390,7 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
 	<xsl:for-each select="field[not(@sysCol='TRUE')]">
 		<xsl:variable name="len">
 			<xsl:choose>
-				<xsl:when test="@dataType=$DT_INT">
+				<xsl:when test="@dataType=$DT_INT or @dataType=$DT_INT_BIG or @dataType=$DT_INT_SMALL">
 					<xsl:value-of select="$DEF_WIDTH_INT"/>
 				</xsl:when>
 				<xsl:when test="@dataType=$DT_DATE">
@@ -325,7 +399,7 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
 				<xsl:when test="@dataType=$DT_TIME">
 					<xsl:value-of select="$DEF_WIDTH_TIME"/>
 				</xsl:when>					
-				<xsl:when test="@dataType=$DT_DATETIME">
+				<xsl:when test="@dataType=$DT_DATETIME or @dataType=$DT_DATETIMETZ">
 					<xsl:value-of select="$DEF_WIDTH_DATETIME"/>
 				</xsl:when>
 				<xsl:when test="@dataType=$DT_FILE">
@@ -388,18 +462,18 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
 		<xsl:variable name="field_dt" select="/document/metadata[@modelId=$model_id]/field[@id=$field_id]/@dataType"/>
 		<xsl:variable name="excel_style_id">		
 			<xsl:choose>
-				<xsl:when test="$field_dt=$DT_INT or $field_dt=$DT_INT_UNSIGNED"><xsl:value-of select="$EXCEl_STYLE_ID_INT"/></xsl:when>
+				<xsl:when test="$field_dt=$DT_INT or $field_dt=$DT_INT_UNSIGNED or $field_dt=$DT_INT_BIG or $field_dt=$DT_INT_SMALL"><xsl:value-of select="$EXCEl_STYLE_ID_INT"/></xsl:when>
 				<xsl:when test="$field_dt=$DT_FLOAT or $field_dt=$DT_FLOAT_UNSIGNED"><xsl:value-of select="$EXCEl_STYLE_ID_FLOAT"/></xsl:when>
-				<xsl:when test="$field_dt=$DT_DATETIME"><xsl:value-of select="$EXCEl_STYLE_ID_DATETIME"/></xsl:when>
+				<xsl:when test="$field_dt=$DT_DATETIME or $field_dt=$DT_DATETIMETZ"><xsl:value-of select="$EXCEl_STYLE_ID_DATETIME"/></xsl:when>
 				<xsl:when test="$field_dt=$DT_DATE"><xsl:value-of select="$EXCEl_STYLE_ID_DATE"/></xsl:when>
 				<xsl:otherwise><xsl:value-of select="$EXCEl_STYLE_ID_STRING"/></xsl:otherwise>
 			</xsl:choose>
 		</xsl:variable>
 		<xsl:variable name="excel_data_type">
 			<xsl:choose>
-				<xsl:when test="$field_dt=$DT_INT or $field_dt=$DT_INT_UNSIGNED"><xsl:value-of select="$EXCEl_DT_INT"/></xsl:when>
+				<xsl:when test="$field_dt=$DT_INT or $field_dt=$DT_INT_UNSIGNED or $field_dt=$DT_INT_BIG or $field_dt=$DT_INT_SMALL"><xsl:value-of select="$EXCEl_DT_INT"/></xsl:when>
 				<xsl:when test="$field_dt=$DT_FLOAT or $field_dt=$DT_FLOAT_UNSIGNED"><xsl:value-of select="$EXCEl_DT_FLOAT"/></xsl:when>
-				<xsl:when test="$field_dt=$DT_DATETIME"><xsl:value-of select="$EXCEl_DT_DATETIME"/></xsl:when>
+				<xsl:when test="$field_dt=$DT_DATETIME or $field_dt=$DT_DATETIMETZ"><xsl:value-of select="$EXCEl_DT_DATETIME"/></xsl:when>
 				<xsl:when test="$field_dt=$DT_DATE"><xsl:value-of select="$EXCEl_DT_DATE"/></xsl:when>
 				<xsl:otherwise><xsl:value-of select="$EXCEl_DT_STRING"/></xsl:otherwise>
 			</xsl:choose>
@@ -408,6 +482,33 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
 			<xsl:choose>
 				<xsl:when test="$field_dt=$DT_BOOL and node()='true'"><xsl:value-of select="'да'"/></xsl:when>
 				<xsl:when test="$field_dt=$DT_BOOL and node()='false'"><xsl:value-of select="'нет'"/></xsl:when>
+				<xsl:when test="($field_dt=$DT_DATETIME or $field_dt=$DT_DATETIMETZ) and string-length(node())=0">
+					<xsl:value-of select="'1970-01-01T00:00:00'"/>
+				</xsl:when>
+				<xsl:when test="($field_dt=$DT_DATETIME or $field_dt=$DT_DATETIMETZ) and string-length(substring-before(node(),'+'))&gt;0">
+					<xsl:value-of select="substring-before(node(),'+')"/>
+				</xsl:when>
+				
+				<!--
+				<xsl:when test="$field_dt=$DT_DATE">
+					<xsl:call-template name="format_date">
+						<xsl:with-param name="val" select="node()" />
+						<xsl:with-param name="formatStr" select="''" />
+					</xsl:call-template>		
+				</xsl:when>
+				-->
+				<xsl:when test="$field_dt=$DT_DATE">
+					<xsl:value-of select="concat(node(),'T00:00:00.000')"/>
+				</xsl:when>
+				
+				
+				<!--
+				<xsl:when test="$field_dt=$DT_JSON or $field_dt=$DT_JSONB">
+					<xsl:call-template name="format_json">
+						<xsl:with-param name="val" select="node()" />
+					</xsl:call-template>		
+				</xsl:when>														
+				-->
 				<xsl:otherwise><xsl:value-of select="node()"/></xsl:otherwise>
 			</xsl:choose>
 		</xsl:variable>

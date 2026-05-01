@@ -1,20 +1,16 @@
-/* Copyright (c) 2016 
-	Andrey Mikhalevich, Katren ltd.
-*/
-/*	
-	Description
-*/
-/** Requirements
- * @requires 
- * @requires core/extend.js  
-*/
+/**	
+ * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2016
 
-/* constructor
-@param string id
-@param object options{
+ * @extends GridAjx
+ * @requires core/extend.js
+ * @requires GridAjx.js     
 
-}
-*/
+ * @class
+ * @classdesc
+ 
+ * @param {string} id - Object identifier
+ * @param {object} options
+ */
 function GridAjxDOCT(id,options){
 	options = options || {};	
 	

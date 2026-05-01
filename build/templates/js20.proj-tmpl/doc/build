@@ -1,3 +1,0 @@
-#!/bin/sh
-
-xalan  -out description.html -in description.xml -xsl description.html.xsl

@@ -55,7 +55,7 @@ code LIKE '%s%s%s%s%%'
 class <xsl:value-of select="@id"/>_Controller extends ControllerSQL{
 	const COMPLETE_RES_COUNT=5;
 	
-	public function __construct($dbLinkMaster=NULL){
+	public function __construct($dbLinkMaster=NULL,$dbLink=NULL){
 		$kladr_link = new DB_Sql();
 		$kladr_link->appname		= APP_NAME;
 		$kladr_link->technicalemail = TECH_EMAIL;
@@ -167,13 +167,13 @@ class <xsl:value-of select="@id"/>_Controller extends ControllerSQL{
 		
 		$pattern = $params->getDbVal('pattern');
 		
-		if ($params->getVal('naspunkt_code') &amp;&amp; $params->getVal('naspunkt_code')!='null'){
+		if ($params->getVal('naspunkt_code') &amp;&amp; strtolower($params->getVal('naspunkt_code'))!='null'){
 			$code = "'".substr($params->getVal('naspunkt_code'),0,11)."'";
 		}
-		else if ($params->getVal('gorod_code') &amp;&amp; $params->getVal('gorod_code')!='null'){
+		else if ($params->getVal('gorod_code') &amp;&amp; strtolower($params->getVal('gorod_code'))!='null'){
 			$code = "'".substr($params->getVal('gorod_code'),0,11)."'";
 		}
-		else if ($params->getVal('raion_code') &amp;&amp; $params->getVal('raion_code')!='null'){
+		else if ($params->getVal('raion_code') &amp;&amp; strtolower($params->getVal('raion_code'))!='null'){
 			$code = "'".substr($params->getVal('raion_code'),0,11)."'";
 		}
 		else{

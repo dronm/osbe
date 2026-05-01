@@ -73,7 +73,7 @@ class Logger {
 	/* Used for log data iteration
 	 */
 	public function getLineIterator(){
-		$arrayobject = new ArrayObject(explode(PHP_EOL,$this->content));
+		$arrayobject = new ArrayObject(explode(PHP_EOL, (isset($this->content) && strlen($this->content))? $this->content:''));
 		return $arrayobject->getIterator();		
 	}
 }

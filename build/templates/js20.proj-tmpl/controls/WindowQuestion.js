@@ -13,13 +13,14 @@ var WindowQuestion = {
 	
 	/*
 	@param object options{
-		@param {bool} yes Default true
-		@param bool no Default true
-		@param bool cancel Default true
-		@param int timeout Default 0
-		@param function callBack
-		@param string text
-		@param Control buttonClass Default ButtonCmd
+		@param {bool} yes [true]
+		@param {bool} no [true]
+		@param {bool} cancel [true]
+		@param {int} timeout [0]
+		@param {function} callBack
+		@param {function} callBackYes
+		@param {string} text
+		@param {Control} buttonClass [ButtonCmd]
 	}
 	*/
 	show:function(options){
@@ -32,7 +33,17 @@ var WindowQuestion = {
 		var cancel = (options.cancel!=undefined)? options.cancel:true;
 		var timeout = options.timeout || 0;
 		
-		this.m_callBack = options.callBack;
+		if(options.callBackYes){
+			this.m_callBack = (function(userCallBack){
+				return function(res){
+					if(res == WindowQuestion.RES_YES){
+						userCallBack();
+					}
+				}
+			})(options.callBackYes)
+		}else{
+			this.m_callBack = options.callBack;
+		}
 		
 		this.m_modalId = "quest-modal";
 		this.m_modal = new WindowFormModalBS(this.m_modalId,{

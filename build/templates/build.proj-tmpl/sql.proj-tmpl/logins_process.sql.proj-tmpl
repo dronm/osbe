@@ -19,6 +19,5 @@ END;
 $BODY$
   LANGUAGE plpgsql VOLATILE
   COST 100;
-ALTER FUNCTION logins_process()
-  OWNER TO ;
+ALTER FUNCTION logins_process() OWNER TO ;
 

@@ -24,8 +24,8 @@ require_once(FRAME_WORK_PATH.'basic_classes/Field.php');
 require_once('common/ClientSearch.php');
 
 class <xsl:value-of select="@id"/>_Controller extends <xsl:value-of select="@parentId"/>{
-	public function __construct($dbLinkMaster=NULL){
-		parent::__construct($dbLinkMaster);<xsl:apply-templates/>
+	public function __construct($dbLinkMaster=NULL,$dbLink=NULL){
+		parent::__construct($dbLinkMaster,$dbLink);<xsl:apply-templates/>
 	}	
 	<xsl:call-template name="extra_methods"/>
 }

@@ -1,27 +1,24 @@
-/* Copyright (c) 2017 
-	Andrey Mikhalevich, Katren ltd.
-*/
-/*	
-	Description
-*/
-/** Requirements
- * @requires 
- * @requires core/extend.js  
-*/
+/**	
+ * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2017
 
-/* constructor
-@param string id
-@param object options{
+ * @extends Control
+ * @requires core/extend.js
+ * @requires Control.js     
 
-}
-*/
+ * @class
+ * @classdesc
+ 
+ * @param {string} id - Object identifier
+ * @param {object} options
+ * @param {string} options.period 
+ */
 function PeriodSelect(id,options){
 	options = options || {};	
 	
 	var self = this;
 	
 	options.events = {
-		"onClick":function(e){
+		"click":function(e){
 			self.onClick(e);
 		}
 	};
@@ -30,7 +27,7 @@ function PeriodSelect(id,options){
 	options.attrs.style = "cursor:pointer;";
 	options.value = options.value || options.period || this.PERIOD_ALIASES[0];
 	
-	PeriodSelect.superclass.constructor.call(this,id,"a",options);
+	PeriodSelect.superclass.constructor.call(this,id,"A",options);
 	
 }
 extend(PeriodSelect,Control);
@@ -51,9 +48,9 @@ PeriodSelect.prototype.onClick = function(e){
 		var self = this;
 		var cont_el = [];
 		var cur = this.getValue();
-		console.log("cur="+cur)
+		//console.log("cur="+cur)
 		for (var i=0;i<this.PERIOD_ALIASES.length;i++){
-			cont_el.push(new Control(CommonHelper.uniqid(),"p",{
+			cont_el.push(new Control(CommonHelper.uniqid(),"P",{
 				"className":"forSelect" + ( (cur==this.PERIOD_ALIASES[i])? " "+this.CLASS_SELECTED:""),
 				"value":this.PERIODS[i],
 				"attrs":{
@@ -61,7 +58,7 @@ PeriodSelect.prototype.onClick = function(e){
 					"style":"cursor:pointer;"
 				},
 				"events":{
-					"onClick":function(e){
+					"click":function(e){
 						self.m_pop.setVisible(false);
 						var par = e.target.parentNode;
 						for (var j=0;j<par.childNodes.length;j++){
@@ -78,11 +75,12 @@ PeriodSelect.prototype.onClick = function(e){
 				}
 			}));
 		}
-		var cont = new ControlContainer(null,"div",{
+		var cont = new ControlContainer(null,"DIV",{
 			"elements":cont_el
 		});
 		this.m_pop = new PopOver(this.getId()+":popover",{
-			"contentElements":[cont]
+			"contentElements":[cont],
+			"zIndex":"2001"
 		});
 		this.m_pop.toDOM(e,this.getNode());
 	}
@@ -103,6 +101,6 @@ PeriodSelect.prototype.setValue = function(v){
 	PeriodSelect.superclass.setValue.call(this,this.PERIODS[p]);
 }
 
-PeriodSelect.prototype.getValue = function(v){
+PeriodSelect.prototype.getValue = function(){
 	return this.getAttr("period");
 }

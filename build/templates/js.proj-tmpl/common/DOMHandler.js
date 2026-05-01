@@ -184,4 +184,27 @@ var DOMHandler = {
 		} 		
 		return xmlDoc;
 	}
+	,delAttr:function(node, name){
+		if (node){
+			return node.removeAttribute(name);
+		}
+	}
+	/**
+	 * adds new attribute to a node
+	 * @public
+	 */
+	,setAttr:function(node, attrName, attrValue){
+		if (node){
+			//try{
+			node.setAttribute(attrName,attrValue);
+			/*
+			}
+			catch(e){
+			console.log("attrName="+attrName+" attrValue=")
+			console.dir(attrValue)
+			}
+			*/
+		}
+	}
+	
 }	

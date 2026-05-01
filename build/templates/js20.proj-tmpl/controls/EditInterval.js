@@ -32,8 +32,12 @@ EditInterval.prototype.DEF_EDIT_MASK = "99:99:99.9999";
 
 /* public methods */
 
+EditInterval.prototype.getModified = function(){
+	return (this.getValue()!=this.getInitValue());
+}
+
 EditInterval.prototype.getValue = function(){
-	return this.m_node.value;
+	return (!this.m_node.value||!this.m_node.value.length)? null:this.m_node.value;
 }
 EditInterval.prototype.getMiliSeconds = function(){
 	return DateHelper.timeToMS(this.getValue());

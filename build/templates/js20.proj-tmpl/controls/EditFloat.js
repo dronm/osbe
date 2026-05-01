@@ -17,14 +17,19 @@ function EditFloat(id,options){
 	options = options || {};
 	options.validator = options.validator || new ValidatorFloat(options);
 	
-	options.cmdSelect = false;
+	if(options.cmdSelect==undefined){
+		options.cmdSelect = false;
+	}
 	
 	this.m_precision = options.precision || this.DEF_PRECISION;
+	
+	options.attrs = options.attrs || {};
+	options.attrs.step = (options.attrs.step!=undefined)? options.attrs.step : ("1,"+("0000000000").substr(0,this.m_precision));//1/Math.pow(10,this.m_precision);
 	
 	EditFloat.superclass.constructor.call(this,id,options);
 	
 	this.m_allowedChars.push(44);//,
-	this.m_allowedChars.push(46);//.
+	this.m_allowedChars.push(46);//.Browse input type numeric will not allow dots!
 }
 extend(EditFloat,EditInt);
 
@@ -50,7 +55,19 @@ function setCaretPosition(elem, caretPos) {
 EditFloat.prototype.handleKeyPress = function(e){
 	var res = EditFloat.superclass.handleKeyPress.call(this,e);
 	
+	//console.dir(e)
+	//console.log(e.which)
 	if (res!==false && e.which==46){
+		/*console.dir(this.m_node.selectionStart)
+		console.dir(this.m_node.selectionEnd)
+		var val = this.m_node.value;
+		var start = this.m_node.selectionStart;
+	        var end = this.m_node.selectionEnd;
+            	this.m_node.value = val.slice(0, start) + "," + val.slice(end);
+	        // Move the caret
+            	this.m_node.selectionStart = this.m_node.selectionEnd = start + 1;		
+            	*/
+            
 		//console.log("val="+this.m_node.value)
 		/*
 		var caretPos = this.m_node.selectionStart;
@@ -92,3 +109,28 @@ EditFloat.prototype.setValue = function(val){
 	}
 }
 
+/**
+ * @param {Event} e
+ */
+EditFloat.prototype.correctPastedData = function(e){
+	e.stopPropagation();
+	e.preventDefault();					
+
+	var pasted_data;
+	var cur_val;
+	var clipboard_data = e.clipboardData || window.clipboardData;
+	if(!clipboard_data){
+		cur_val = this.getValue();
+		pasted_data = cur_val;
+	}
+	else{
+		pasted_data = clipboard_data.getData("Text").match(/\d+(?:[.,]\d+)?/g).join(""); //only numbers && .,
+		pasted_data = parseFloat(pasted_data);
+	}
+	if(!cur_val){
+		cur_val = this.getValue();
+	}
+	if(cur_val!=pasted_data){
+		this.setValue(pasted_data);
+	}
+}

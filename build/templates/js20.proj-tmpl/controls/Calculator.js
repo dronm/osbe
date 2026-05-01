@@ -1,15 +1,12 @@
-/* Copyright (c) 2010 
-	Andrey Mikhalevich, Katren ltd.
-*/
-/*
-	Calculator control class
-	Calculator
-*/
+/**	
+ * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2010
 
-/**
-  * @requires core/CommonHepler.js
-*/
-
+ * @class
+ * @classdesc
+ 
+ * @param {object} options
+ * @param {Control} options.editControl
+ */
 function Calculator(options){
 	options = options||{};
 	if (!options.editControl){
@@ -181,15 +178,13 @@ Calculator.prototype.show = function(){
 		this.calcNode = document.createElement('div');
 		this.calcNode.id = input_id+":calc";
 		this.calcNode.className = this.CALC_CLASS;
-		with (this.calcNode.style) {
-			border     = "1px solid gray";
-			background = '#FFFFFF';
-			color      = '#000000';
-			position   = 'absolute';
-			display    = 'block';
-			padding    = '2px';
-			cursor     = 'default';
-		}
+		this.calcNode.style.border     = "1px solid gray";
+		this.calcNode.style.background = '#FFFFFF';
+		this.calcNode.style.color      = '#000000';
+		this.calcNode.style.position   = 'absolute';
+		this.calcNode.style.display    = 'block';
+		this.calcNode.style.padding    = '2px';
+		this.calcNode.style.cursor     = 'default';
 		this.calcNode.innerHTML = this.getHTML();
   		this.calcNode.style.top  = (CommonHelper.findPosY(node)+ node.offsetHeight+2)+ "px";
 	        this.calcNode.style.left = (CommonHelper.findPosX(node)+ node.offsetWidth+2)+ "px";				

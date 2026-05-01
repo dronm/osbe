@@ -1,0 +1,37 @@
+<model cmd="add" id="RG{{REG_MODEL_ID}}" parent="{{PARENT_MODEL}}" dataTable="rg_{{REG_TABLE}}" virtual="FALSE" modelType="RG" period="{{BALANCE_PERIOD}}">
+	<defaultOrder>
+		<field id="date_time" />
+	</defaultOrder>
+	<field id="id" dataType="Int" primaryKey="TRUE" autoInc="TRUE" required="FALSE" alias="Код" />
+	<field id="date_time" dataType="DateTime" required="TRUE" alias="Период" />
+	{{#DIMENSIONS}}
+	<field id="{{FIELD_ID}}" dataType="{{FIELD_DATA_TYPE}}" alias="{{FIELD_ALIAS}}" {{#FIELD_REF_TABLE}}refTable="{{FIELD_REF_TABLE}}" refField="{{FIELD_REF_FIELD}}"{{/FIELD_REF_TABLE}} />
+	{{/DIMENSIONS}}
+	{{#FACTS}}
+	<field id="{{FIELD_ID}}" dataType="{{FIELD_DATA_TYPE}}" alias="{{FIELD_ALIAS}}" />
+	{{/FACTS}}
+	<index id="rg_form_products_date_time_index">
+		<field id="date_time" />
+	</index>
+	{{#DIMENSIONS}}
+	<index id="rg_{{REG_TABLE}}_{{FIELD_ID}}_idx">
+		<field id="{{FIELD_ID}}" />
+	</index>
+	{{/DIMENSIONS}}
+</model>
+<model cmd="add" id="RG{{REG_MODEL_ID}}List" parent="{{PARENT_MODEL}}" dataTable="rg_{{REG_TABLE}}_list" virtual="TRUE">
+	{{#DIMENSIONS}}
+	<defaultOrder>
+		<field id="{{FIELD_ID}}" />
+	</defaultOrder>
+	{{/DIMENSIONS}}
+	<field id="id" dataType="Int" primaryKey="TRUE" sysCol="TRUE" />
+	{{#DIMENSIONS}}
+	<field id="{{FIELD_ID}}" dataType="Int" sysCol="TRUE" />
+	<field id="{{FIELD_REF_TABLE}}_ref" dataType="JSON" alias="{{FIELD_REF_ALIAS}}" />
+	{{/DIMENSIONS}}
+	{{#FACTS}}
+	<field id="{{FIELD_ID}}" dataType="{{FIELD_DATA_TYPE}}" alias="{{FIELD_ALIAS}}" />
+	{{/FACTS}}
+</model>
+

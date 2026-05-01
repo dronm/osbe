@@ -1,20 +1,22 @@
-/* Copyright (c) 2016 
-	Andrey Mikhalevich, Katren ltd.
-*/
-/*	
-	Description
-*/
-/** Requirements
- * @requires 
- * @requires core/extend.js  
-*/
+/**	
+ * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2016
 
-/* constructor
-@param string id
-@param object options{
+ * @extends EditRef
+ * @requires core/extend.js
+ * @requires EditRef.js     
 
-}
-*/
+ * @class
+ * @classdesc
+ 
+ * @param {string} id - Object identifier
+ * @param {object} options
+ * @param {bool} [options.cmdUnprocess=true]
+ * @param {bool} [options.cmdPrintDoc=true]
+ * @param {bool} [options.cmdShowActs=true]
+ * @param {Control} [options.controlShowActs=ButtonCtrl]
+ * @param {Control} [options.controlPrintDoc=ButtonCtrl]
+ * @param {Control} [options.controlUnprocess=ButtonCtrl]                               
+ */
 function GridCommandsDOC(id,options){
 	options = options || {};	
 	

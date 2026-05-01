@@ -22,7 +22,12 @@
  
  * @param {Control} options.dependBaseControl
  * @param {Array} options.dependBaseFieldIds
- * @param {Array} options.dependFieldIds       
+ * @param {Array} options.dependFieldIds
+ 
+ * @param {string} options.cashId
+ * @param {string} [options.asyncRefresh=true]
+
+       
  */
 
 function EditSelectRef(id,options){
@@ -30,9 +35,9 @@ function EditSelectRef(id,options){
 	
 	options.optionClass = options.optionClass || EditSelectOptionRef;
 	
-	this.setCashable((options.cashable!=undefined)? options.cashable:true);
-	this.setModel(options.model);
+	this.setModel(options.model);	
 	this.setReadPublicMethod(options.readPublicMethod);
+	this.setCashable((options.cashable!=undefined)? options.cashable:true);	
 
 	this.setKeyIds(options.keyIds);
 	
@@ -50,32 +55,37 @@ function EditSelectRef(id,options){
 	
 	this.setAutoRefresh((options.autoRefresh!=undefined)? options.autoRefresh:true);
 	
-	var self = this;
+	this.m_cashId = options.cashId;
 	
-	options.events = options.events || {};
-	if (!options.events.change){
-		options.events.change = function(){
-			self.callOnSelect();
+	this.m_asyncRefresh = (options.asyncRefresh!=undefined)? options.asyncRefresh:true;
+	
+	//lazy init key passed
+	if(options.value&&typeof(options.value)!="object"&&options.keyIds&&options.keyIds.length){
+		var k_vals = {};
+		for(i=0;i<options.keyIds.length;i++){
+			k_vals[options.keyIds[i]]=(i==0)? options.value:null;
 		}
-	}
-	else{
-		this.m_origOnChange = options.events.change;
-		options.events.change = function(){
-			self.callOnSelect();
-			self.m_origOnChange();
-		}			
-	}
-
-	EditSelectRef.superclass.constructor.call(this, id, options);
+		options.value = new RefType({"keys":k_vals});
+	}	
 	
+	if (options.value && typeof options.value=="object" && options.value.getKeys){
+		this.m_setKeys = options.value.getKeys();
+		
+	}else if (options.value && typeof options.value=="object" && options.value.m_keys){
+		this.m_setKeys = options.value.m_keys;
+	}
+	
+	EditSelectRef.superclass.constructor.call(this, id, options);
+//console.log("EditSelect Id="+this.getName()+", options.value="+options.value,(new Date()))	
 	if (options.modelDataStr && this.m_model){		
 		if (this.getCashable()){
-			window.getApp().setCashData(this.m_model.getId(),options.modelDataStr);
+			window.getApp().setCashData(this.getCashId(),options.modelDataStr);
 		}
-		this.m_model.setDate(options.modelDataStr);
+		this.m_model.setData(options.modelDataStr);
 	}
 	
-	if (!this.m_autoRefresh)this.onRefresh();
+	//if no after toDOM autoRefresh, then refresh now
+	//if (!this.m_autoRefresh)this.onRefresh();
 	
 }
 extend(EditSelectRef,EditSelect);
@@ -98,7 +108,11 @@ EditSelectRef.prototype.m_dependBaseFieldIds;
 EditSelectRef.prototype.m_dependFieldIds;
 EditSelectRef.prototype.m_dependControl;
 
-EditSelectRef.prototype.m_autoRefresh;
+//EditSelectRef.prototype.m_autoRefresh;
+
+//when setValue is called m_setKeys is set, then after toDOM,refresh real value is set from m_setKeys
+//delayed set implementation
+EditSelectRef.prototype.m_setKeys;
 
 //EditSelectRef.prototype.NOT_SELECTED_VAL = "null";//????should be null
 EditSelectRef.prototype.KEY_ATTR = "keys";
@@ -106,11 +120,11 @@ EditSelectRef.prototype.KEY_INIT_ATTR = "initKeys";
 
 
 EditSelectRef.prototype.keys2Str = function(keys){
-	return CommonHelper.array2json(keys);
+	return CommonHelper.serialize(keys);
 }
 
 EditSelectRef.prototype.str2Keys = function(str){
-	return CommonHelper.json2obj(str);
+	return CommonHelper.unserialize(str);
 }
 
 
@@ -156,6 +170,9 @@ EditSelectRef.prototype.getInitKeys = function(){
 }
 
 EditSelectRef.prototype.getModified = function(){
+//console.log("EditSelectRef.prototype.getModified")
+//console.log("EditSelectRef.prototype.getModified key=",this.getAttr(this.KEY_ATTR), 'initKe=',this.getAttr(this.KEY_INIT_ATTR))
+	
 	return (this.getAttr(this.KEY_ATTR) != this.getAttr(this.KEY_INIT_ATTR));
 }
 
@@ -176,12 +193,16 @@ EditSelectRef.prototype.reset = function(){
   * @param {Object|RefType} val
   */
 EditSelectRef.prototype.setValue = function(val){
-//console.log("EditSelectRef.prototype.setValue")
+//console.log("EditSelectRef.prototype.setValue "+this.getName(),val,(new Date()))
 //console.dir(val)
+//debugger	
+	if( typeof val == "string" && val.substring(0,1)=="{" && val.substring(val.length-1)=="}"){
+		val = CommonHelper.unserialize(val);		
+	}
 
-	if (val!=null && typeof val == "object" && ( (val.getKeys && val.getDescr) || (val.keys && val.descr) ) ){
+	if (val!=null && typeof val == "object" && ( (val.getKeys && val.getDescr) || (val.keys && val.descr) || (val.m_keys && val.m_descr) ) ){
 		//RefType || RefType old style unserealized
-		var val = val.getKeys? val.getKeys():val.keys;
+		val = val.getKeys? val.getKeys() : (val.keys? val.keys : val.m_keys);
 		if (!this.m_keyIds){
 			this.m_keyIds = [];
 			for (var keyid in val){
@@ -198,15 +219,12 @@ EditSelectRef.prototype.setValue = function(val){
 		//First key???
 		val[this.getModelKeyFields()[0].getId()] = val_str;
 	}	
-/*
-	var model_keys = {};
-	var ind = 0;
-	for (var i=0;i<this.m_modelKeyFields.length;i++){
-		var key_id = this.m_modelKeyFields[i].getId();
-		model_keys[key_id] = val[key_id];		
-		ind++;
+	
+	//val now hold keys!
+	if(!val){
+		return;
 	}
-*/
+	
 	var rec_found;
 	for(var id in this.m_elements){
 		var v = this.m_elements[id].getValue();
@@ -223,21 +241,32 @@ EditSelectRef.prototype.setValue = function(val){
 		}
 	}		
 
-	this.setKeys(val);
-	
-	//EditSelectRef.superclass.setValue.call(this,val);
+	this.m_setKeys = val;
+}
+
+EditSelectRef.prototype.selectOptionById = function(optId){
+	EditSelectRef.superclass.selectOptionById.call(this,optId);
+	this.callOnSelect();
 }
 
 EditSelectRef.prototype.getValue = function(){
 	var ind = this.getIndex();
-	if (ind){
+	//if (ind){
+	
+	var res = null;
+	if (
+	(this.getAddNotSelected()&&!this.getNotSelectedLast()&&ind)
+	||(this.getAddNotSelected()&&this.getNotSelectedLast()&&ind!=(this.getCount()-1))
+	||!this.getAddNotSelected()
+	){
 		var elem = this.getElement(ind);		
-		return new RefType(
+		res = !elem? null : new RefType(
 			{"keys":this.getKeys(),
 			"descr":elem.getDescr()
 			}
 		);
-	}	
+	}
+	return res;	
 	/*
 	var v = EditSelectRef.superclass.getValue.call(this);
 	if (v){
@@ -251,21 +280,23 @@ EditSelectRef.prototype.getValue = function(){
 	}
 	*/
 }
+EditSelectRef.prototype.getFormattedValue = function(){
+	var v = this.getValue();
+	if(v && typeof(v)=="object" && v.getFormattedValue){
+		v = v.getFormattedValue();
+	}
+	return v;
+}
 
 EditSelectRef.prototype.setInitValue = function(val){
-//console.log("EditSelectRef.prototype.setInitValue")
-//console.dir(val)
-	//@ToDo get rid of this!!!
-	/*
-	if (isNaN(val) || val=="NaN"){
-		val = this.NOT_SELECTED_VAL;
-	}
-	EditSelectRef.superclass.setInitValue.call(this,val);
-	*/	
 	this.setValue(val);	
-	if (typeof val == "object"){
-		this.m_initValue = val;
+	
+	if (val && typeof val == "object" && val.getKeys){
 		this.setInitKeys(val.getKeys());
+		//this.m_initValue = this.getValue();//val;
+		//this.setInitKeys(val.keys? val.keys:this.getKeys()); //this.getKeys()
+	}else if (val && typeof val == "object" && val.keys){
+		this.setInitKeys(val.keys);
 	}	
 }
 
@@ -275,7 +306,40 @@ EditSelectRef.prototype.getInitValue = function(){
 
 EditSelectRef.prototype.setCashable = function(v){
 	this.m_cashable = v;
+	if(window.getApp().getAppSrv()){
+		if(v){
+			//subscribe
+			var self = this;			
+			var pm = this.getReadPublicMethod();
+			if(!pm)return;
+			var contr = pm.getController();
+			if(!contr)return;			
+			var ev_pref = window.getApp().getEventPrefOnController(contr);
+			if(!ev_pref)return;
+			this.subscribeToSrvEvents({
+				"events":[
+					{"id": ev_pref+".update"}
+					,{"id":ev_pref+".insert"}
+					,{"id": ev_pref+".delete"}
+				]
+				,"onEvent":function(json){
+					window.getApp().setCashData(self.getCashId(),null);
+					self.onRefresh();
+				}
+				,"onClose":function(message){
+					if(message && message.code>1000){
+						//self.setRefreshInterval(self.m_httpRrefreshInterval);						
+						//timer refresh
+					}
+				}
+			});
+		}else{
+			//unsubscribe + timer refresh
+			this.unsubscribeFromSrvEvents();
+		}
+	}
 }
+
 EditSelectRef.prototype.getCashable = function(){
 	return this.m_cashable;
 }
@@ -377,38 +441,50 @@ EditSelectRef.prototype.setModelDescrFormatFunction = function(v){
 EditSelectRef.prototype.toDOM = function(parent){
 	EditSelectRef.superclass.toDOM.call(this,parent);
 	
-	if (this.getAutoRefresh()){
+	//if (this.getAutoRefresh()){
 		this.onRefresh();
-	}
+	//}
 }
 
 EditSelectRef.prototype.onGetData = function(resp){
-//console.log("EditSelectRef.prototype.onGetData resp=")
-//console.dir(resp)
-
-	if (!this.m_model) return;
+var nm = this.getName();
+//console.log("EditSelectRef.prototype.onGetData Name="+nm,(new Date()))	
+//debugger
+	if (!this.m_model){
+		return;
+	}
 	
-	if (resp && this.m_model){
-		this.m_model.setData(resp.getModelData(this.m_model.getId()));
+	if (resp){
+		var m_data = resp.getModelData(this.m_model.getId());
+		this.m_model.setData(m_data);
 		
 		if (this.getCashable()){
-			window.getApp().setCashData(this.m_model.getId(),resp.getModelData(this.m_model.getId()));
+			window.getApp().setCashData(this.getCashId(), m_data);
 		}
 	}
-	
-	var old_key_val;
-	if (this.m_initValue){
+		
+	//var old_key_val,
+	/*if (this.m_initValue){
 		old_key_val = this.m_initValue;
 		this.m_initValue = undefined;
-	}
+		
+	}else*/
+	var old_keys;
+	if(this.m_setKeys){
+		old_keys = this.m_setKeys;
+		this.m_setKeys = undefined;
+		//console.log("Found old_keys for "+this.getName()+" old_keys=",old_keys)
+	}	
 	else{
-		old_key_val = this.getValue();
-		if (old_key_val){
-			old_key_val = old_key_val.getKeys();
-		}		
+		/*var old_val = this.getValue();
+		if (old_val && old_val.getKeys){
+			old_keys = old_val.getKeys();
+		}
+		*/
+		old_keys = this.getKeys();
 	}
-	
-	//lookup field
+//console.log("old_keys=",old_keys,(new Date()))		
+	//lookup fieldselectOptionById
 	if (!this.getModelKeyFields()){
 		this.defineModelKeyFieds();
 		/*
@@ -472,55 +548,58 @@ EditSelectRef.prototype.onGetData = function(resp){
 		opt_ind++;
 	}
 	
-	var opt_checked = false;
-	var old_keys;
+	var opt_checked = false;	
 	
-	if (old_key_val && typeof(old_key_val) == "object" && old_key_val.getKeys){
+	/*if (old_key_val && typeof(old_key_val) == "object" && old_key_val.getKeys){
 		old_keys = old_key_val.getKeys();
-	}
-//console.log("EditSelectRef.prototype.onGetData OLdKeys=")
-//console.dir(old_keys)				
+	}*/
 	
 	var ind = 0;
 	while (this.m_model.getNextRow()){
+	
 		var opt_key_val = {};
-		var keys = {};
-		for (var i=0;i<this.m_modelKeyFields.length;i++){
-			var key_v = this.m_modelKeyFields[i].getValue();
-			opt_key_val[this.m_modelKeyFields[i].getId()] = key_v;
-			keys[this.m_keyIds[i]] = key_v; 
-		}
-//console.dir(keys)		
+		var key_v,key_id;
 		var cur_opt_checked = false;
-		if (!opt_checked){
-			if (old_keys){
-				//ref object passed as init key						
-				for (var key_id in keys){
-					opt_checked = (old_keys[key_id] && keys[key_id] == old_keys[key_id]);
-					if (!opt_checked){
-						break;
-					}
-				}
-				cur_opt_checked = opt_checked;
+		for (var i=0;i<this.m_modelKeyFields.length;i++){
+			key_v = this.m_modelKeyFields[i].getValue();
+			key_id = this.m_modelKeyFields[i].getId();
+			opt_key_val[key_id] = key_v;
+			if (this.m_modelKeyFields.length==1 && !opt_checked && old_keys && old_keys[key_id] && old_keys[key_id]==key_v){
+				opt_checked = true;
+				cur_opt_checked = true;
 			}
-			else if (old_key_val){
-				//simple value - string/number, check first key
-				for (var key_id in keys){
-					opt_checked = (keys[key_id] == old_key_val);
+		}		
+		
+		//for multy key support we have to check all keys!
+		if (old_keys && this.m_modelKeyFields.length>1 && !opt_checked){
+			var all_keys_matched = true;
+			for(var key_id in opt_key_val){
+				if(!old_keys[key_id] || old_keys[key_id]!=opt_key_val[key_id]){
+					all_keys_matched = false;
 					break;
-				}			
-				cur_opt_checked = opt_checked;
-			}			
+				}
+			}
+			if(all_keys_matched){
+				opt_checked = true;
+				cur_opt_checked = true;				
+			}
 		}
-				
+		if(cur_opt_checked){
+			this.setAttr(this.KEY_ATTR,this.keys2Str(opt_key_val));
+		}
+		
 		var descr_val = "";
-		if (this.getModelDescrFormatFunction()){
-			descr_val = this.getModelDescrFormatFunction().call(this,this.m_model.getFields());
+		var form_f = this.getModelDescrFormatFunction();
+		if (form_f){
+			descr_val = form_f.call(this,this.m_model.getFields());
 		}
 		else{
 			for (var i=0;i<this.m_modelDescrFields.length;i++){
-				descr_val+= (descr_val=="")? "":" ";
-				descr_val+= this.m_modelDescrFields[i].getValue();
+				var descr_v = this.m_modelDescrFields[i].getValue();
+				if(descr_v&&descr_v.length){
+					descr_val+= (descr_val=="")? "":" ";
+					descr_val+= this.m_modelDescrFields[i].getValue();
+				}
 			}		
 		}
 		
@@ -545,41 +624,56 @@ EditSelectRef.prototype.onGetData = function(resp){
 		this.addElement(new opt_class(this.getId()+":"+opt_ind,def_opt_opts));	
 	}
 	
+	for (var elem_id in this.m_elements){
+		this.m_elements[elem_id].toDOM(this.m_node);
+	}
+
 	if (!opt_checked && this.getCount()){
 		this.setIndex(0);
 	}
 	
-	for (var elem_id in this.m_elements){
-		this.m_elements[elem_id].toDOM(this.m_node);
-	}
-	
-	this.setEnabled(this.m_oldEnabled);
+	/*if(!this.m_oldEnableLocked){
+		this.setEnableLock(false);
+		this.setEnabled(this.m_oldEnabled);
+	}*/	
+}
+
+EditSelectRef.prototype.getCashId = function(){	
+	return this.m_model.getId() + ( (this.m_cashId!=undefined)? "_"+this.m_cashId:"" );
 }
 
 EditSelectRef.prototype.onRefresh = function(){	
-//console.log("EditSelectRef.prototype.onRefresh")
+//console.log("EditSelectRef.prototype.onRefresh "+this.getName(),(new Date()))	
+
+	/*this.m_oldEnableLocked = this.getEnableLock();	
+	if(!this.m_oldEnableLocked){
+		this.m_oldEnabled = this.getEnabled();	
+		this.setEnabled(false);
+		this.setEnableLock(true);
+	}*/
+
 	if (this.getCashable() && this.m_model){
-		var cash = window.getApp().getCashData(this.m_model.getId());
-		if (cash){
-			this.m_oldEnabled = this.getEnabled();	
-			this.setEnabled(false);
 		
+		var cash = window.getApp().getCashData(this.getCashId());
+		if (cash){
 			this.m_model.setData(cash);
 			this.onGetData();
 			return;		
 		}
 	}
 
-	this.m_oldEnabled = this.getEnabled();	
-	this.setEnabled(false);
 	var self = this;
 	this.getReadPublicMethod().run({
-		"async":false,
+		"async":this.m_asyncRefresh,
 		"ok":function(resp){			
 			self.onGetData(resp);
 		},
 		"fail":function(resp,erCode,erStr){
-			self.setEnabled(self.m_oldEnabled);
+			/*if(!self.m_oldEnableLocked){
+				self.setEnableLock(false);
+				self.setEnabled(self.m_oldEnabled);
+			}*/
+			
 			self.getErrorControl().setValue(window.getApp().formatError(erCode,erStr));
 		}
 	});
@@ -588,6 +682,7 @@ EditSelectRef.prototype.onRefresh = function(){
 
 EditSelectRef.prototype.callOnSelect = function(){
 	var i = this.getIndex();
+	if (i==undefined)return;
 	var model_keys = this.getElement(i).getValue();
 	
 	var key_ids = this.getKeyIds();

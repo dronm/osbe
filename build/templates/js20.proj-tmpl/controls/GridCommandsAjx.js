@@ -1,24 +1,18 @@
-/* Copyright (c) 2016
-	Andrey Mikhalevich, Katren ltd.
-*/
-/*	
-	Description
-*/
+/**	
+ * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2016
 
-/** Requirements
-* @requires core/extend.js
-* @requires controls/ControlContainer.js
-* @requires controls/ButtonCtrl.js
-* @requires controls/WindowPrint.js  
-*/
+ * @extends GridCellHead
+ * @requires core/extend.js
+ * @requires GridCellHead.js     
 
-/*constructor
-@param string id
-@param object options{
-	@param bool cmdExport
-	@param Control controlExport
-}
-*/
+ * @class
+ * @classdesc
+ 
+ * @param {string} id - Object identifier
+ * @param {object} options
+ * @param {bool} [options.cmdExport=true]
+ * @param {Control} [options.controlExport=ButtonCtrl] 
+ */
 function GridCommandsAjx(id,options){
 	options = options || {};
 	

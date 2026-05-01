@@ -60,6 +60,10 @@ EditCheckBox.prototype.setValue = function(val){
 	this.setChecked(this.getValidator().correctValue(val));
 }
 
+EditCheckBox.prototype.switchValue = function(){		
+	this.setValue(!this.getValue());
+}
+
 EditCheckBox.prototype.getInitValue = function(val){
 	return (this.getAttr(this.VAL_INIT_ATTR)=="true");
 }

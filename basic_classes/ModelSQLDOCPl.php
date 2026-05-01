@@ -8,7 +8,7 @@ class ModelSQLDOCPl extends ModelSQL{
 		parent::__construct($dbLink,$options);
 	}
 	
-	public function insert(){
+	public function insert($needId=FALSE,$row=NULL){
 		//throw new Exception($this->getInsertQuery(TRUE));
 		
 		$view_id_set = isset($_REQUEST['view_id']);
@@ -98,7 +98,6 @@ class ModelSQLDOCPl extends ModelSQL{
 			$dateTo = strtotime($ar['date_to']);
 		}
 	}
-
 	public function select($insertMode=FALSE,
 					$modelWhere=NULL,
 					$modelOrder=NULL,
@@ -107,7 +106,8 @@ class ModelSQLDOCPl extends ModelSQL{
 					$grpFieldArray=NULL,
 					$aggFieldArray=NULL,
 					$calcTotalCount=NULL,
-					$toXML=NULL){
+					$toXML=NULL,
+					$copyMode=FALSE){
 		
 		if (!isset($modelWhere)){
 			$modelWhere = new ModelWhereSQL();

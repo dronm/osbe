@@ -23,6 +23,6 @@ function FieldArray(id,options){
 }
 extend(FieldArray,Field);
 
-FieldJSON.prototype.getValueXHR = function(){
+FieldArray.prototype.getValueXHR = function(){
 	return ( CommonHelper.serialize(this.getValue()));
 }

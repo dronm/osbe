@@ -1,5 +1,5 @@
 <?php
-/*
+/**
  * Для старта нового проекта
  * необходимо запустить скрипт в папке с проектом
  */
@@ -22,24 +22,9 @@ echo '
 	
 	define('PROJECT_DIR', dirname(__FILE__));	
 	
-	define('DEF_BUILF_FILE_PERM','0664');
-	define('DEF_BUILF_DIR_PERM','0775');
-	define('DEF_JS_DIR','js20');
 	define('LOG_NAME','build.log');	
 	
-	define('DEF_LOCALE','ru');
-	define('DEF_LOCALE_DESCR','Русский');
-	
-	define('DEF_DB_SERVER','localhost');
-	define('DEF_DB_PORT','5432');
-	define('DEF_DB_SCHEMA','public');
-	define('DEF_DB_CREATE_USER','postgres');	
-	
-	define('DEF_ADM_ROLE','admin');
-	define('DEF_ADM_ROLE_DESCR','Администратор');
-	
-	define('DEF_UNLOGGED_CONTR','User_Controller');
-	define('DEF_UNLOGGED_VIEW','Login');				
+	require_once(REPO_DIR.DIRECTORY_SEPARATOR."deployment.ini.php");
 	
 	/*
 	define('DEF_OPT_CONSTANTS','checked');
@@ -113,7 +98,7 @@ echo '
 		echo '<p>'.$str_res.'</p>';
 		if (is_null($e)){
 			echo '<BR></BR>';		
-			echo '<p>Database creating script is saved to build/sql/init_db_sql</p>';
+			echo '<p>Go to Build page and build first version!</p>';
 			echo '<BR></BR>';		
 			echo '<a href="build/">==>> Build</a>';
 		}
@@ -134,11 +119,11 @@ echo '
 				</tr>
 				<tr>
 					<td>Author name:</td>
-					<td><input type="text" value="" name="AUTHOR"/></td>
+					<td><input type="text" value="'.DEF_AUTHOR.'" name="AUTHOR"/></td>
 				</tr>				
 				<tr>
 					<td>Author email:</td>
-					<td><input type="text" value="" name="TECH_EMAIL"/></td>
+					<td><input type="text" value="'.DEF_TECH_EMAIL.'" name="TECH_EMAIL"/></td>
 				</tr>				
 				<tr>
 					<td>* Javascript directory:</td>
@@ -157,7 +142,7 @@ echo '
 			<table>
 				<tr>
 					<td>GIT user name:</td>
-					<td><input type="text" value="" name="GITHUB_USER"/></td>
+					<td><input type="text" value="'.DEF_GITHUB_USER.'" name="GITHUB_USER"/></td>
 				</tr>
 				<tr>
 					<td>Project description:</td>
@@ -175,13 +160,13 @@ echo '
 				<tr>
 					<td>* Project locale:</td>
 					<td>
-						<input type="text" value="'.DEF_LOCALE.'" name="LOCALE" required="required"/>
+						<input type="text" value="'.DEP_DEF_LOCALE.'" name="LOCALE" required="required"/>
 					</td>
 				</tr>			
 				<tr>
 					<td>* Project locale description:</td>
 					<td>
-						<input type="text" value="'.DEF_LOCALE_DESCR.'" name="LOCALE_DESCR" required="required"/>
+						<input type="text" value="'.DEP_DEF_LOCALE_DESCR.'" name="LOCALE_DESCR" required="required"/>
 					</td>
 				</tr>	
 			</table>					
@@ -206,15 +191,14 @@ echo '
 			</table>					
 		</fieldset>
 
-		<br></br>
-		
+		<br></br>		
 		<fieldset>
 			<legend>File permissions</legend>
 			<table>
 				<tr>
 					<td>* User group:</td>
 					<td>
-						<input type="text" value="andrey" name="BUILD_GROUP" required="required"/>
+						<input type="text" value="'.DEF_BUILD_GROUP.'" name="BUILD_GROUP" required="required"/>
 					</td>
 				</tr>
 				<tr>
@@ -275,7 +259,7 @@ echo '
 				<tr>
 					<td>SuperUser password:</td>
 					<td>
-						<input type="text" value="" name="DB_CREATE_PASSWORD" required="required"/>
+						<input type="text" value="" name="DB_CREATE_PASSWORD"/>
 					</td>
 				</tr>
 			
@@ -294,6 +278,49 @@ echo '
 					</td>
 				</tr>
 			</table>			
+		</fieldset>
+		
+		<br></br>
+		<fieldset>
+			<legend>Application administrator user</legend>
+			<table>
+				<tr>
+					<td>* Name:</td>
+					<td>
+						<input type="text" value="'.DEF_APP_USER.'" name="APP_USER" required="required"/>
+					</td>
+				</tr>			
+				<tr>
+					<td>* Password:</td>
+					<td>
+						<input type="text" value="'.DEF_APP_PWD.'" name="APP_PWD" required="required"/>
+					</td>
+				</tr>	
+				<tr>
+					<td>* Time zone locale name:</td>
+					<td>
+						<input type="text" value="'.DEF_APP_TIMEZONE_NAME.'" name="APP_TIMEZONE_NAME" required="required"/>
+					</td>
+				</tr>	
+				<tr>
+					<td>* Time zone locale description:</td>
+					<td>
+						<input type="text" value="'.DEF_APP_TIMEZONE_DESCR.'" name="APP_TIMEZONE_DESCR" required="required"/>
+					</td>
+				</tr>	
+				<tr>
+					<td>* Time zone locale hour difference from UTC:</td>
+					<td>
+						<input type="text" value="'.DEF_APP_TIMEZONE_HOUR_DIF.'" name="APP_TIMEZONE_HOUR_DIF" required="required"/>
+					</td>
+				</tr>	
+				
+			</table>					
+		</fieldset>
+	
+		<fieldset>
+			<legend>Initial database scripts</legend>
+			<input type="checkbox" value="Execute initial database scripts:" name="EXEC_INIT_DB_SCRIPTS" '.(DEF_EXEC_INIT_DB_SCRIPTS? 'checked="checked"':'').'/>
 		</fieldset>
 		
 		<input type="submit" value="New project" name="submit"/>

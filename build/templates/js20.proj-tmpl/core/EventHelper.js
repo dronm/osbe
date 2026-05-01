@@ -11,10 +11,9 @@
 var EventHelper = {
 	add:function(obj, evType, fn, capture){
 		if (!fn)return;
-		if (typeof obj == 'string') {
-			obj = $(obj);
-		}
-		
+		if(typeof(obj)=="string"){
+			obj = document.getElementById(obj);
+		}		
 		if (CommonHelper.isIE()){
 			$(obj).on(evType,fn);
 		}
@@ -31,6 +30,9 @@ var EventHelper = {
 		}
 	},
 	del:function(obj, evType, fn, useCapture){
+		if(typeof(obj)=="string"){
+			obj = document.getElementById(obj);
+		}		
 		if (CommonHelper.isIE()){
 			$(obj).off(evType,fn);
 		}
@@ -119,5 +121,26 @@ var EventHelper = {
 	delWheelEvent:function(obj, fn, capture){
 		this.del(obj, this.getWheelEventName(), fn, capture);
 	}
-	
+	,stopPropagation:function(e){
+		if (e.preventDefault){
+			e.preventDefault();
+		}
+		else if (e.stopPropagation){
+			e.stopPropagation();
+		}
+		else {
+			e.cancelBubble = true;
+		}		
+		return false;	
+	}
+	,fireEvent:function(element,eventStr){
+		if ("createEvent" in document) {
+		    var evt = document.createEvent("HTMLEvents");
+		    evt.initEvent(eventStr, false, true);
+		    element.dispatchEvent(evt);
+		}
+		else{
+		    element.fireEvent("on"+eventStr);		
+		}	
+	}
 };

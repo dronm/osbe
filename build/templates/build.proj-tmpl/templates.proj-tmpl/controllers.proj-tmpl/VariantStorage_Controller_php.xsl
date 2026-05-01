@@ -21,9 +21,11 @@
 require_once(FRAME_WORK_PATH.'basic_classes/ParamsSQL.php');
 require_once(FRAME_WORK_PATH.'basic_classes/VariantStorage.php');
 
+require_once(FRAME_WORK_PATH.'basic_classes/SessionVarManager.php');
+
 class <xsl:value-of select="@id"/>_Controller extends <xsl:value-of select="@parentId"/>{
-	public function __construct($dbLinkMaster=NULL){
-		parent::__construct($dbLinkMaster);<xsl:apply-templates/>
+	public function __construct($dbLinkMaster=NULL,$dbLink=NULL){
+		parent::__construct($dbLinkMaster,$dbLink);<xsl:apply-templates/>
 	}	
 	<xsl:call-template name="extra_methods"/>
 }
@@ -31,73 +33,95 @@ class <xsl:value-of select="@id"/>_Controller extends <xsl:value-of select="@par
 </xsl:template>
 
 <xsl:template name="extra_methods">
-	public function insert($pm){
-		$pm->setParamValue("user_id",$_SESSION['user_id']);
+
+	private static function get_user_id(){
+		return isset($_SESSION['user_id'])? $_SESSION['user_id'] : SessionVarManager::getValue('user_id');
+	}
+	
+	public function insert($pm){		
+		$pm->setParamValue("user_id",self:: get_user_id());
 		parent::insert($pm);
 	}
 
 	public function delete($pm){
-		$params = new ParamsSQL($pm,$this->getDbLink());
-		$params->addAll();
+		$ar = $this->getDbLinkMaster()->query_first(sprintf(
+			"SELECT storage_name
+			FROM variant_storages
+			WHERE id=%d AND user_id=%d"
+			,$this->getExtDbVal($pm,'id')
+			,self:: get_user_id()
+		));
 	
-		$pm->setParamValue("user_id",$_SESSION['user_id']);
-		parent::delete($pm);
+		$this->getDbLinkMaster()->query(sprintf(
+			"DELETE FROM variant_storages
+			WHERE id=%d AND user_id=%d"
+			,$this->getExtDbVal($pm,'id')
+			,self:: get_user_id()
+		));
 		
-		VariantStorage::clear($params->getVal("storage_name"));
+		if(count($ar) &amp;&amp; !is_null($ar['storage_name'])){
+			VariantStorage::clear($ar['storage_name']);
+		}
 	}
 
-	public function upsert($pm,$dataCol){
-		$params = new ParamsSQL($pm,$this->getDbLink());
-		$params->addAll();
+	public function upsert($pm,$dataCol,$dataColVal){
 	
 		$this->getDbLinkMaster()->query(sprintf(
 		"SELECT variant_storages_upsert_%s(%d,%s,%s,%s,%s)",
 		$dataCol,
-		$_SESSION['user_id'],
-		$params->getDbVal("storage_name"),
-		$params->getDbVal("variant_name"),
-		$params->getDbVal($dataCol),
-		$params->getDbVal("default_variant")
+		self:: get_user_id(),
+		$this->getExtDbVal($pm,'storage_name'),
+		$this->getExtDbVal($pm,'variant_name'),
+		$dataColVal,
+		$this->getExtDbVal($pm,'default_variant')
 		));
 		
-		VariantStorage::clear($params->getVal("storage_name"));
+		VariantStorage::clear($this->getExtVal($pm,'storage_name'));
 	}
 	
 	public function upsert_filter_data($pm){
-		$this->upsert($pm,'filter_data');
+		$this->upsert($pm, 'filter_data', $this->getExtDbVal($pm,'filter_data'));
 	}
 
 	public function upsert_col_visib_data($pm){
-		$this->upsert($pm,'col_visib_data');
+		$this->upsert($pm, 'col_visib_data', $this->getExtDbVal($pm,'col_visib_data'));
 	}
 
 	public function upsert_col_order_data($pm){
-		$this->upsert($pm,'col_visib_order');
+		$this->upsert($pm, 'col_visib_order', $this->getExtDbVal($pm,'col_visib_order'));
+	}
+	public function upsert_all_data($pm){
+		$all_data = json_decode($this->getExtDbVal($pm,'all_data'));
+		if ($all_data->filter_data){
+			$this->upsert($pm, 'filter_data', json_encode($all_data->filter_data));
+		}
+		if ($all_data->col_visib_data){
+			$this->upsert($pm, 'col_visib_data', json_encode($all_data->col_visib_data));
+		}
+		if ($all_data->col_order_data){
+			$this->upsert($pm, 'col_order_data', json_encode($all_data->col_order_data));
+		}
+		
 	}
 	
 	public function get_list($pm){
-		$params = new ParamsSQL($pm,$this->getDbLink());
-		$params->addAll();
+	
 		$this->AddNewModel(sprintf(
-			"SELECT
-				user_id,
-				storage_name,
-				variant_name,
-				default_variant
-			FROM variant_storages
+			"SELECT *
+			FROM variant_storages_list
 			WHERE user_id=%d AND storage_name=%s",
-			$_SESSION['user_id'],
-			$params->getParamById('storage_name')
+			self:: get_user_id(),
+			$this->getExtDbVal($pm,'storage_name')
 			),
 		"VariantStorageList_Model"
 		);
 	}	
 	
 	public function get_obj_col($pm,$dataCol){
-		$params = new ParamsSQL($pm,$this->getDbLink());
-		$params->addAll();
+	
 		$this->AddNewModel(sprintf(
 			"SELECT
+				id,
 				user_id,
 				storage_name,
 				variant_name,
@@ -106,9 +130,9 @@ class <xsl:value-of select="@id"/>_Controller extends <xsl:value-of select="@par
 			FROM variant_storages
 			WHERE user_id=%d AND storage_name=%s AND variant_name=%s",
 			$dataCol,
-			$_SESSION['user_id'],
-			$params->getParamById('storage_name'),
-			$params->getParamById('variant_name')
+			self::get_user_id(),
+			$this->getExtDbVal($pm,'storage_name'),
+			$this->getExtDbVal($pm,'variant_name')
 			),
 		"VariantStorage_Model"
 		);
@@ -123,6 +147,10 @@ class <xsl:value-of select="@id"/>_Controller extends <xsl:value-of select="@par
 	public function get_col_order_data($pm){
 		$this->get_obj_col($pm,'col_order_data');
 	}	
+	public function get_all_data($pm){
+		$this->get_obj_col($pm,'filter_data,col_visib_data,col_order_data');
+	}	
+	
 	
 </xsl:template>
 

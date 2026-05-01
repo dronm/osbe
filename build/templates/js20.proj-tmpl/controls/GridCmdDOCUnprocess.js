@@ -13,7 +13,7 @@
 function GridCmdDOCUnprocess(id,options){
 	options = options || {};	
 
-	options.showCmdControl = false;
+	options.showCmdControl = (options.showCmdControl!=undefined)? options.showCmdControl:false;
 	options.glyph = "glyphicon-unchecked";
 	
 	GridCmdDOCUnprocess.superclass.constructor.call(this,id,options);

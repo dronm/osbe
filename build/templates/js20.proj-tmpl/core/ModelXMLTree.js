@@ -46,10 +46,12 @@ ModelXMLTree.prototype.getKeyField = function(){
 
 ModelXMLTree.prototype.getRow = function(ind){
 	ModelXMLTree.superclass.getRow.call(this,ind);
+	//grid.edit(insert) sets model to current row
 	this.m_parentNode = (this.m_currentRow)? this.m_currentRow:this.m_node;
 }
 
 ModelXMLTree.prototype.addRow = function(row){	
+	if(!this.m_parentNode) this.m_parentNode = this.m_node;
 	this.m_parentNode.appendChild(row);
 }
 
@@ -94,4 +96,13 @@ ModelXMLTree.prototype.makeRow = function(){
 }
 
 
+/**
+ * @public
+ * @returns {int}
+ */
+ModelXMLTree.prototype.getRowCount = function(includeDeleted){
+	includeDeleted = (includeDeleted!=undefined)? includeDeleted:true;
+	var rows = this.getRows(includeDeleted);
+	return rows? rows.length:0;
+}
 

@@ -1,15 +1,15 @@
 /**	
  * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2017
 
- * @extends
- * @requires core/extend.js  
+ * @extends Control
+ * @requires core/extend.js
+ * @requires Control.js     
 
  * @class
  * @classdesc
  
  * @param {string} id - Object identifier
  * @param {Object} options
- * @param {string} options.className
  */
 function ControlDate(id,tagName,options){
 	options = options || {};	

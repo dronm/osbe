@@ -60,6 +60,11 @@ define('BROWSE_MODE_INSERT', 2);
 define('ERR_AUTH', 'Ошибка авторизации.@100');
 define('ERR_AUTH_EXP', 'Срок сессии истек.@101');
 define('ERR_AUTH_NOT_LOGGED', 'Не авторизован.@102');
+define('ERR_AUTH_BANNED', 'Доступ запрещен.@103');
+define('ERR_SQL_SERVER_CON', 'Ошибка подключения к серверу базы данных.@105');
+define('ERR_SQL_QUERY', 'Ошибка при выполнении запроса к базе данных.@106');
+define('ERR_VERSION', 'Версии клиентского и серверного ПО отличается.@107');
+define('ERR_SESSION', 'Ошибка работы с данными сессии.@109');
 
 define('ERR_COM_NO_CONTROLLER', "Контроллер не определен.@10");
 define('ERR_COM_METH_PROHIB', 'Метод запрещен.@11');
@@ -67,8 +72,10 @@ define('ERR_COM_NO_VIEW', 'Вид не определен.@12');
 
 //DB
 define('ERR_DELETE_CONSTR_VIOL', 'Удаление невозможно, так как существуют ссылки.@500');
+define('ERR_DELETE_NO_ID', 'Отсутствуют идентификаторы удаляемого объекта.@501');
 
 define('HEADER_404','HTTP/1.0 404 Not Found');
 
-define('FW_VERSION', '2.1.14');
+
+define('FW_VERSION', '2.1.27.1');
 ?>

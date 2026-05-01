@@ -11,6 +11,9 @@
  * @param {namespace} options
  * @param {string} [options.template=GridCmdContainerAjx]
  * @param {bool|GridCmd} [options.cmdExport=true] Export to Excel
+ * @param {string} options.exportFileName Export to Excel file name without extension
+  * @param {string} options.exportTempl Export to Excel transformation template XXX.xls.xsl
+ * @param {string} options.exportPublicMethod
 */
 function GridCmdContainerAjx(id,options){
 	options = options || {};
@@ -22,12 +25,16 @@ function GridCmdContainerAjx(id,options){
 	//Export
 	if (options.cmdExport){
 		this.setCmdExport( (typeof(options.cmdExport)=="object")?
-			options.cmdExport : new GridCmdExport(id+":export")
+			options.cmdExport : new GridCmdExport(id+":export", {
+				"fileName": options.exportFileName,
+				"templ": options.exportTempl,
+				"publicMethod": options.exportPublicMethod
+			})
 		);	
 	}
 	
 	options.templateOptions = options.templateOptions || {};
-	options.templateOptions.cmdExport=options.cmdExport,
+	options.templateOptions.cmdExport = options.cmdExport,
 	
 	GridCmdContainerAjx.superclass.constructor.call(this,id,options);
 }

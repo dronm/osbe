@@ -23,98 +23,136 @@
  * @param {Control} options.controlUpFast 
  * @param {Control} options.controlUp
  * @param {Control} options.controlPeriodSelect
+ * @param {PeriodSelect} options.periodSelectClass
+ * @param {object} options.periodSelectOptions
  * @param {string} options.valueFrom
  * @param {string} options.valueTo 
+ 
+ * @param {string} options.downFastTitle
+ * @param {string} options.downTitle 
+ * @param {string} options.upFastTitle
+ * @param {string} options.upTitle
+ * @param {bool} options.controlCmdClear
+ 
  */
 function EditPeriodDate(id,options){
 	options = options || {};	
-	
-	options.template = window.getApp().getTemplate("EditPeriodDate");
-	options.templateOptions = options.templateOptions || {
-		"CONTR_DOWN_FAST_TITLE":this.CONTR_DOWN_FAST_TITLE,
-		"CONTR_DOWN_TITLE":this.CONTR_DOWN_TITLE,
-		"CONTR_UP_FAST_TITLE":this.CONTR_UP_FAST_TITLE,
-		"CONTR_UP_TITLE":this.CONTR_UP_TITLE
-	};
-	
-	EditPeriodDate.superclass.constructor.call(this,id,"template",options);
-	
-	var edit_class = options.editClass || EditDate;
+
 	options.cmdDownFast = (options.cmdDownFast!==undefined)? options.cmdDownFast:true;
 	options.cmdDown = (options.cmdDown!==undefined)? options.cmdDown:true;
 	options.cmdUpFast = (options.cmdUpFast!==undefined)? options.cmdUpFast:true;
 	options.cmdUp = (options.cmdUp!==undefined)? options.cmdUp:true;
 	options.cmdPeriodSelect = (options.cmdPeriodSelect!==undefined)? options.cmdPeriodSelect:true;
+
+	options.template = options.template || window.getApp().getTemplate("EditPeriodDate");
+	options.templateOptions = options.templateOptions || {
+		"CONTR_DOWN_FAST_TITLE": options.downFastTitle||this.CONTR_DOWN_FAST_TITLE,
+		"CONTR_DOWN_TITLE": options.downTitle||this.CONTR_DOWN_TITLE,
+		"CONTR_UP_FAST_TITLE": options.upFastTitle||this.CONTR_UP_FAST_TITLE,
+		"CONTR_UP_TITLE": options.upTitle||this.CONTR_UP_TITLE,
+		"PERIOD_SELECT": options.cmdPeriodSelect,
+		"DOWN": options.cmdDown,
+		"DOWN_FAST": options.cmdDownFast,
+		"UP": options.cmdUp,
+		"UP_FAST": options.cmdUpFast,
+		"LABEL": (options.labelCaption!=undefined&&typeof(options.labelCaption)=="string"&&options.labelCaption.length)? options.labelCaption: false
+	};
+	
+	EditPeriodDate.superclass.constructor.call(this,id,"template",options);
+	
+	var edit_class = options.editClass || EditDate;
 	
 	var self = this;
-	
 	if (options.cmdDownFast){
-		this.setControlDownFast(options.controlDownFast || new Button(id+":downFast",
-			{"glyph":"glyphicon-triangle-left",
+		this.setControlDownFast(options.controlDownFast || new Button(id+":downFast",{
+			"glyph":"glyphicon-triangle-left",
 			"onClick":function(){
-				}
+				self.goFast(-1);
 			}
-		));
+		}));
 	}
 	
 	if (options.cmdDown){
-		this.setControlDown(options.controlDown || new Button(id+":down",
-			{"glyph":"glyphicon-menu-left",
+		this.setControlDown(options.controlDown || new Button(id+":down",{
+			"glyph":"glyphicon-menu-left",
 			"onClick":function(){
+				self.go(-1);
 			}
-			}
-		));
+		}));
 	}
 	
 	
 	if (options.cmdUp){
-		this.setControlUp(options.controlUp || new Button(id+":up",
-			{"glyph":"glyphicon-menu-right",
+		this.setControlUp(options.controlUp || new Button(id+":up",{
+			"glyph":"glyphicon-menu-right",
 			"onClick":function(){
+				self.go(1);
 			}
+		}));
+	}
+	if (options.cmdUpFast){
+		this.setControlUpFast(options.controlUpFast || new Button(id+":upFast",{
+			"glyph":"glyphicon-triangle-right",
+			"onClick":function(){
+				self.goFast(1);
 			}
-		));
+		}));
+	}
+	
+	if(options.controlFrom||options.cmdControlFrom==undefined||options.cmdControlFrom===true){
+		this.setControlFrom(options.controlFrom ||
+			new edit_class(id+":from",{			
+				"value":options.valueFrom,
+				"timeValueStr":(options.valueFrom)? DateHelper.format(options.valueFrom,"H:i:s"):this.DEF_FROM_TIME,
+				"contClassName":window.getBsCol(6),
+				"editContClassName":"input-group "+window.getBsCol(12),
+				"cmdClear": options.controlCmdClear
+				/*,"onValueChange":function(){
+					console.log("controlFrom value change")
+				}*/
+			})
+		);
+	}
+	
+	if(options.controlTo||options.cmdControlTo==undefined||options.cmdControlTo===true){	
+		this.setControlTo(options.controlTo ||
+			new edit_class(id+":to",{
+				"value":options.valueTo,
+				"timeValueStr":(options.valueTo)? DateHelper.format(options.valueTo,"H:i:s"):this.DEF_TO_TIME,
+				"contClassName":window.getBsCol(6),
+				"editContClassName":"input-group "+window.getBsCol(12),
+				"cmdClear": options.controlCmdClear
+				/*,"onValueChange":function(){
+					console.log("controlTo value change")
+				}*/
+			})
+		);
 	}
 		
-	this.setControlFrom(options.controlFrom ||
-		new edit_class(id+":from",{			
-			"value":options.valueFrom,
-			"timeValueStr":(options.valueFrom)? DateHelper.format(options.valueFrom,"H:i:s"):this.DEF_FROM_TIME,
-			"contClassName":window.getBsCol(6),
-			"editContClassName":"input-group "+window.getBsCol(12)
-			}
-		)
-	);
-	
-	this.setControlTo(options.controlTo ||
-		new edit_class(id+":to",{
-			"value":options.valueTo,
-			"timeValueStr":(options.valueTo)? DateHelper.format(options.valueTo,"H:i:s"):this.DEF_TO_TIME,
-			"contClassName":window.getBsCol(6),
-			"editContClassName":"input-group "+window.getBsCol(12)
-			}
-		)
-	);
-	
 	this.setField(options.field);
 	
-	if (options.cmdUpFast){
-		this.setControlUpFast(options.controlUpFast || new Button(id+":upFast",
-			{"glyph":"glyphicon-triangle-right",
-			"onClick":function(){
-			
-			}
-			}
-		));
-	}
 	if (options.cmdPeriodSelect){
-		this.setControlPeriodSelect(options.controlPeriodSelect || new PeriodSelect(this.getId()+":periodSelect",
-			{
-			"onValueChange":function(){
+		var sel_ctrl;
+		if(options.controlPeriodSelect){
+			//custom control
+			sel_ctrl = options.controlPeriodSelect;
+		}
+		else{
+			var sel_class = options.periodSelectClass || PeriodSelect;
+			var sel_opts = options.periodSelectOptions || {};
+			sel_opts.onValueChange = sel_opts.onValueChange || function(){
 				self.setPredefinedPeriod(this.getValue());
-			}		
-			}
-		));
+			};
+			sel_ctrl = new sel_class(this.getId()+":periodSelect",sel_opts);
+		}
+		//How to disable date controls (from && to) if period is predefined?
+		let selected_per = sel_ctrl.getValue();
+		if(selected_per && selected_per != "all"){
+			//disable date controls
+			this.getControlFrom().setEnabled(false);
+			this.getControlTo().setEnabled(false);
+		}
+		this.setControlPeriodSelect(sel_ctrl);
 	}
 	
 	//this.m_cont = new ControlContainer(id+":d-cont","div");
@@ -225,42 +263,27 @@ EditPeriodDate.prototype.reset = function(){
 }
 
 EditPeriodDate.prototype.focus = function(){
-	this.getControlFrom().focus();
+	if(this.m_controlFrom)this.m_controlFrom.focus();
 }
 
 /**
- * @returns [Array]
+ * @returns [object]
  */
 EditPeriodDate.prototype.getValue = function(){
-	/*
-	var ctrl_from = this.getControlFrom();
-	var ctrl_to = this.getControlTo();
-	var res;
-	if (
-		(ctrl_from && !ctrl_from.isNull())
-		|| (ctrl_to && !ctrl_to.isNull())
-	){
-		res = {"period":this.getControlPeriodSelect().getValue()};
-		if (ctrl_from && !ctrl_from.isNull()){
-			res.from = DateHelper.format(ctrl_from.getValue(),FieldDateTime.XHR_FORMAT);
-		}
-		if (ctrl_to && !ctrl_to.isNull()){
-			res.to = DateHelper.format(ctrl_to.getValue(),FieldDateTime.XHR_FORMAT);
-		}
-	}
-	*/
 	return {"period":this.getControlPeriodSelect().getValue()};
 }
+
 EditPeriodDate.prototype.isNull = function(){
-	return (this.getControlFrom().isNull() && this.getControlTo().isNull());
+	return (this.m_controlFrom && this.m_controlTo.isNull());
 }
 /**
- * @param [Array] v
+ * @param [object] v
  */
 EditPeriodDate.prototype.setValue = function(v){
-	//if (v.from)this.getControlFrom().setValue(v.from);
-	//if (v.to)this.getControlTo().setValue(v.to);
-	if (v.period)this.getControlPeriodSelect().setValue(v.period);
+	if (v){
+		this.getControlPeriodSelect().setValue(v);
+		this.setControlsEnabled(v);
+	}
 }
 
 EditPeriodDate.prototype.setInitValue = function(v){
@@ -281,10 +304,19 @@ EditPeriodDate.prototype.setCtrlDateTime = function(ctrl,dt){
 	ctrl.setValue(dt);
 }
 
+EditPeriodDate.prototype.setControlsEnabled = function(per){
+	var ctrl_en = (per=="all");
+	this.getControlFrom().setEnabled(ctrl_en);
+	this.getControlTo().setEnabled(ctrl_en);
+
+}
+
 EditPeriodDate.prototype.setPredefinedPeriod = function(per){
+	this.setControlsEnabled(per);
 	if (per=="all"){
 		this.getControlFrom().reset();
 		this.getControlTo().reset();
+		this.getControlFrom().focus();
 	}
 	else if (per=="day"){
 		this.setCtrlDateTime(this.getControlFrom(),DateHelper.time());
@@ -305,5 +337,81 @@ EditPeriodDate.prototype.setPredefinedPeriod = function(per){
 	else if (per=="year"){
 		this.setCtrlDateTime(this.getControlFrom(),DateHelper.yearStart());
 		this.setCtrlDateTime(this.getControlTo(),DateHelper.yearEnd());		
+	}	
+}
+
+EditPeriodDate.prototype.addYearsToControl = function(control,years){
+	var v = control.getValue();
+	if (v){
+		v.setFullYear(v.getFullYear() + years);
+		control.setValue(v);
+	}
+}
+EditPeriodDate.prototype.addMonthsToControl = function(control,months){
+	var v = control.getValue();
+	if (v){
+		v.setMonth(v.getMonth() + months);
+		control.setValue(v);
+	}
+}
+EditPeriodDate.prototype.addDaysToControl = function(control,days){
+	var v = control.getValue();
+	if (v){
+		v.setDate(v.getDate() + days);
+		control.setValue(v);
+	}
+}
+EditPeriodDate.prototype.goFast = function(sign){
+	var per = this.getControlPeriodSelect().getValue();
+	if (per=="all"){
+		this.addMonthsToControl(this.getControlFrom(),1*sign);
+	}
+	else if (per=="year"){
+		this.addYearsToControl(this.getControlFrom(),2*sign);
+		this.addYearsToControl(this.getControlTo(),2*sign);
+	}
+	else if (per=="quarter"){
+		this.addYearsToControl(this.getControlFrom(),1*sign);
+		this.addYearsToControl(this.getControlTo(),1*sign);
+	}
+	else if (per=="month"){
+		this.addYearsToControl(this.getControlFrom(),1*sign);
+		this.getControlTo().setValue(DateHelper.monthEnd(this.getControlFrom().getValue()));
+	}
+	else if (per=="week"){
+		this.addMonthsToControl(this.getControlFrom(),1*sign);
+		this.getControlFrom().setValue(DateHelper.weekStart(this.getControlFrom().getValue()));
+		this.getControlTo().setValue(DateHelper.weekEnd(this.getControlFrom().getValue()));
+	}	
+	else if (per=="day"){
+		this.addMonthsToControl(this.getControlFrom(),1*sign);
+		this.addMonthsToControl(this.getControlTo(),1*sign);
+	}	
+}
+
+EditPeriodDate.prototype.go = function(sign){
+	var per = this.getControlPeriodSelect().getValue();
+	if (per=="all"){
+		this.addDaysToControl(this.getControlFrom(),1*sign);
+	}
+	else if (per=="year"){
+		this.addYearsToControl(this.getControlFrom(),1*sign);
+		this.addYearsToControl(this.getControlTo(),1*sign);
+	}
+	else if (per=="quarter"){
+		this.addMonthsToControl(this.getControlFrom(),3*sign);
+		this.addMonthsToControl(this.getControlTo(),3*sign);
+	}
+	else if (per=="month"){
+		this.addMonthsToControl(this.getControlFrom(),1*sign);
+		this.setCtrlDateTime(this.getControlTo(),DateHelper.monthEnd(this.getControlFrom().getValue()));
+	}
+	else if (per=="week"){
+		this.addDaysToControl(this.getControlFrom(),7*sign);
+		this.setCtrlDateTime(this.getControlTo(),DateHelper.weekEnd(this.getControlFrom().getValue()));
+	}	
+	else if (per=="day"){
+		this.addDaysToControl(this.getControlFrom(),1*sign);
+		this.addDaysToControl(this.getControlTo(),1*sign);
 	}	
 }

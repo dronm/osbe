@@ -1,10 +1,8 @@
-﻿-- Function: variant_storages_upsert_filter_data(in_user_id int, in_storage_name text, in_variant_name text, in_filter_data text, in_default_variant boolean)
+-- Function: variant_storages_upsert_filter_data(in_user_id int, in_storage_name text, in_variant_name text, in_filter_data jsonb, in_default_variant boolean)
 
---DROP FUNCTION variant_storages_upsert(in_user_id int, in_storage_name text, in_variant_name text, in_filter_data text, in_default_variant boolean);
+-- DROP FUNCTION variant_storages_upsert_filter_data(in_user_id int, in_storage_name text, in_variant_name text, in_filter_data jsonb, in_default_variant boolean);
 
-DROP FUNCTION variant_storages_upsert_filter_data(in_user_id int, in_storage_name text, in_variant_name text, in_data text, in_default_variant boolean);
-
-CREATE OR REPLACE FUNCTION variant_storages_upsert_filter_data(in_user_id int, in_storage_name text, in_variant_name text, in_filter_data text, in_default_variant boolean)
+CREATE OR REPLACE FUNCTION variant_storages_upsert_filter_data(in_user_id int, in_storage_name text, in_variant_name text, in_filter_data jsonb, in_default_variant boolean)
   RETURNS void AS
 $BODY$  
 BEGIN
@@ -56,4 +54,6 @@ END;
 $BODY$
   LANGUAGE plpgsql VOLATILE
   COST 100;
-ALTER FUNCTION variant_storages_upsert_filter_data(in_user_id int, in_storage_name text, in_variant_name text, in_filter_data text, in_default_variant boolean) OWNER TO ;
+ALTER FUNCTION variant_storages_upsert_filter_data(in_user_id int, in_storage_name text, in_variant_name text, in_filter_data jsonb, in_default_variant boolean) OWNER TO ;
+
+

@@ -13,7 +13,7 @@
 function GridCmdDOCShowActs(id,options){
 	options = options || {};	
 
-	options.showCmdControl = false;
+	options.showCmdControl = (options.showCmdControl!=undefined)? options.showCmdControl:false;
 	options.glyph = "glyphicon-log-in";
 
 	GridCmdDOCShowActs.superclass.constructor.call(this,id,options);

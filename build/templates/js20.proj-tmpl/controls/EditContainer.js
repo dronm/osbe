@@ -23,6 +23,7 @@
  * @param {Button} options.buttonSelect
  * @param {Button} options.buttonClear
  
+ * @param {function} options.onReset fired when reset() is called   
  */
 function EditContainer(id,options){
 	options = options || {};
@@ -51,6 +52,8 @@ function EditContainer(id,options){
 	}
 	
 	options.className = (options.className!==undefined)? options.className:this.DEF_CLASS;	
+	
+	this.setValidator(options.validator || new ValidatorString(options));
 	
 	//buttons
 	this.setButtonOpen(options.buttonOpen);
@@ -138,11 +141,15 @@ function EditContainer(id,options){
 			}
 		));
 	}
-	
+		
 	this.setContClassName( (options.contClassName!==undefined)? options.contClassName:this.DEF_CONT_CLASS );	
+	this.setContTagName(options.contTagName || this.DEF_CONT_TAG);	
 	this.setEditContClassName( (options.editContClassName!==undefined)? options.editContClassName : (this.DEF_EDIT_CONT_CLASS +" "+ window.getBsCol(8)) );
+	this.setEditContTagName(options.editContTagName || this.DEF_EDIT_CONT_TAG);
 	
 	this.setErrorControl(options.errorControl || new ErrorControl(id+":error") );
+	
+	this.setOnReset(options.onReset);
 }
 extend(EditContainer,ControlContainer);
 
@@ -165,6 +172,8 @@ EditContainer.prototype.m_buttonClear;
 EditContainer.prototype.m_btnContClassName;
 
 /* constants */
+EditContainer.prototype.DEF_CONT_TAG = "DIV";//
+EditContainer.prototype.DEF_EDIT_CONT_TAG = "DIV";
 EditContainer.prototype.DEF_CLASS = "form-control";
 EditContainer.prototype.DEF_CONT_CLASS = "form-group";
 EditContainer.prototype.BTNS_CONTAINER_CLASS="input-group-btn";
@@ -203,6 +212,7 @@ EditContainer.prototype.getIndex = function(){
 EditContainer.prototype.setIndex = function(ind){
 	if (this.m_node.options && this.m_node.options.length>ind){
 		this.m_node.selectedIndex = ind;
+		this.valueChanged();
 	}
 }
 
@@ -317,14 +327,15 @@ EditContainer.prototype.delDOM = function(){
 }
 
 EditContainer.prototype.setVisible = function(visible){
+	if (this.m_container){
+		this.m_container.setVisible(visible);
+	}
+	if (this.m_edit_container){
+		this.m_edit_container.setVisible(visible);
+	}
+
 	if (this.m_label){
 		this.m_label.setVisible(visible);
-		if (this.m_container){
-			this.m_container.setVisible(visible);
-		}
-		if (this.m_edit_container){
-			this.m_edit_container.setVisible(visible);
-		}
 	}
 	if (this.m_buttons){
 		this.m_buttons.setVisible(visible);
@@ -345,6 +356,7 @@ EditContainer.prototype.reset = function(){
 		i = this.getCount()-1;
 	}
 	this.setIndex(i);
+	if(this.m_onReset)this.m_onReset();
 }
 
 EditContainer.prototype.isNull = function(){
@@ -411,6 +423,12 @@ EditContainer.prototype.getEditContClassName = function(){
 }
 EditContainer.prototype.setEditContClassName = function(v){
 	this.m_editContClassName = v;
+}
+EditContainer.prototype.getEditContTagName = function(){
+	return this.m_editContTagName;
+}
+EditContainer.prototype.setEditContTagName = function(v){
+	this.m_editContTagName = v;
 }
 
 EditContainer.prototype.getOnSelect = function(){
@@ -480,3 +498,25 @@ EditContainer.prototype.getBtnContClassName = function(){
 	return this.m_btnContClassName;
 }
 
+EditContainer.prototype.setOnReset = function(v){
+	this.m_onReset = v;
+}
+EditContainer.prototype.getOnReset = function(){
+	return this.m_onReset;
+}
+
+EditContainer.prototype.validate = function(){
+	var res = true;
+	if(this.m_validator){
+		try{
+			this.setValid();
+			var v = this.getValue();
+			this.m_validator.validate(v);
+		}
+		catch(e){
+			this.setNotValid(e.message);
+			res = false;
+		}
+	}
+	return res;
+}

@@ -1,14 +1,13 @@
 /**	
  * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2017
 
- * @extends
- * @requires
-
  * @class
  * @classdesc
- 
- * @param {namespace} options
+
+ * @param {string} id
+ * @param {object} options
  * @param {Controller} options.controller
+ * @param {object} options.fields 
  */
 function PublicMethod(id,options){
 
@@ -62,12 +61,29 @@ PublicMethod.prototype.getFields = function(){
 PublicMethod.prototype.setFields = function(v){
 	this.m_fields = v;
 }
-PublicMethod.prototype.setFieldValue = function(id,value){
+PublicMethod.prototype.setFieldValue = function(id,value){	
+	/*if(value===null||value===undefined){
+		this.resetFieldValue(id);
+	}
+	else{
+		this.checkField(id);
+		this.m_fields[id].setValue(value);
+	}
+	*/
 	this.checkField(id);
 	this.m_fields[id].setValue(value);
 }
 PublicMethod.prototype.getFieldValue = function(id){
 	return this.getField(id).getValue();
+}
+
+PublicMethod.prototype.resetFieldValue = function(id){
+	this.checkField(id);
+	this.m_fields[id].resetValue();
+}
+PublicMethod.prototype.unsetFieldValue = function(id){
+	this.checkField(id);
+	this.m_fields[id].unsetValue();
 }
 
 PublicMethod.prototype.getController = function(){
@@ -78,7 +94,8 @@ PublicMethod.prototype.setController = function(c){
 }
 
 
-/** Stub
+/**
+ * Stub
  */
 PublicMethod.prototype.run = function(options){
 }

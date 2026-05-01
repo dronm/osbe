@@ -1,0 +1,29 @@
+<div id="{{id}}">
+	{{#cmdInsert}}
+	<div id="{{id}}:insert" class="btn btn-primary btn-cmd"></div>	
+	{{/cmdInsert}}
+	
+	{{#cmdSearch}}
+	<div class="btn-group">
+		<div id="{{id}}:search:set" class="btn btn-primary btn-cmd"></div>
+		<div id="{{id}}:search:unset" class="btn btn-primary btn-cmd"></div>
+	</div>
+	{{/cmdSearch}}
+	
+	{{#cmdFilter}}
+	<div id="{{id}}:filter" class="btn btn-primary btn-cmd"></div>
+	{{/cmdFilter}}
+		
+	{{#cmdPrintObj}}
+	<div id="{{id}}:printObj" class="btn btn-primary btn-cmd"></div>
+	{{/cmdPrintObj}}
+		
+	{{#cmdAllCommands}}
+	<div id="{{id}}:allCommands" class="btn btn-primary btn-cmd"></div>
+	{{/cmdAllCommands}}
+	
+	{{#cmdFilterInfo}}
+	<div id="{{id}}:inf" class="hidden"></div>
+	{{/cmdFilterInfo}}
+	
+</div>

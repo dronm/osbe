@@ -14,46 +14,89 @@ function MailForSending_View(id,options){
 	options = options || {};
 	
 	options.enabled = false;
+	options.controller = new MailForSending_Controller();
+	options.model = options.models.MailForSending_Model;
 	
-	Bank_View.superclass.constructor.call(this,id,options);
+	MailForSending_View.superclass.constructor.call(this,id,options);
 		
 	var self = this;
 
-	this.addElement(new ClientNameEdit(id+":bik",{
-		"labelCaption":this.LB_CAP_BIK
+	this.addElement(new EditString(id+":from_addr",{
+		"labelCaption":"Адрес отправителя:"
 	}));	
 
-	this.addElement(new ClientNameEdit(id+":name",{
-		"labelCaption":this.LB_CAP_NAME
+	this.addElement(new EditDateTime(id+":date_time",{
+		"labelCaption":"Дата создания:"
 	}));	
 
-	this.addElement(new ClientNameEdit(id+":gor",{
-		"labelCaption":this.LB_CAP_CITY
+	this.addElement(new EditString(id+":from_name",{
+		"labelCaption":"Имя отправителя:"
 	}));	
 
-	this.addElement(new ClientNameEdit(id+":gr_descr",{
-		"labelCaption":this.LB_CAP_GROUP
+	this.addElement(new EditString(id+":to_addr",{
+		"labelCaption":"Адрес получателя:"
+	}));	
+	this.addElement(new EditString(id+":to_name",{
+		"labelCaption":"Имя получателя:"
 	}));	
 
-	this.addElement(new ClientNameEdit(id+":korshet",{
-		"labelCaption":this.LB_CAP_BANK_ACC
+	this.addElement(new EditString(id+":reply_addr",{
+		"labelCaption":"Адрес для ответа:"
 	}));	
-	this.addElement(new ClientNameEdit(id+":adres",{
-		"labelCaption":this.LB_CAP_ADDRESS
+
+	this.addElement(new EditString(id+":reply_name",{
+		"labelCaption":"Имя для ответа:"
+	}));	
+
+	this.addElement(new EditString(id+":subject",{
+		"labelCaption":"Тема:"
+	}));	
+
+	this.addElement(new EditText(id+":body",{
+		"labelCaption":"Тело:"
+	}));	
+
+	this.addElement(new EditCheckBox(id+":sent",{
+		"labelCaption":"Отправлено:"
 	}));	
 	
-	//****************************************************
-	var contr = new MailForSending_Controller(options.app);
+	this.addElement(new EditDateTime(id+":sent_date_time",{
+		"labelCaption":"Дата отправки:"
+	}));	
+	
+	//****************************************************	
 	
 	//read
-	this.setReadPublicMethod(contr.getPublicMethod("get_object"));
-	this.m_model = options.models.MailForSending_Model;
+	//this.setReadPublicMethod(options.controller.getPublicMethod("get_object"));	
+	
 	this.setDataBindings([
-		new DataBinding({"control":this.getElement("bik"),"model":this.m_model}),
-		new DataBinding({"control":this.getElement("name"),"model":this.m_model}),
-		new DataBinding({"control":this.getElement("korshet"),"model":this.m_model}),
-		new DataBinding({"control":this.getElement("gor"),"model":this.m_model}),
-		new DataBinding({"control":this.getElement("gr_descr"),"model":this.m_model})
+		new DataBinding({"control":this.getElement("from_addr")})
+		,new DataBinding({"control":this.getElement("date_time")})
+		,new DataBinding({"control":this.getElement("from_name")})
+		,new DataBinding({"control":this.getElement("to_addr")})
+		,new DataBinding({"control":this.getElement("to_name")})
+		,new DataBinding({"control":this.getElement("rely_addr")})
+		,new DataBinding({"control":this.getElement("rely_name")})
+		,new DataBinding({"control":this.getElement("subject")})
+		,new DataBinding({"control":this.getElement("body")})
+		,new DataBinding({"control":this.getElement("sent")})
+		,new DataBinding({"control":this.getElement("sent_date_time")})
+		
 	]);	
+	
+	this.setWriteBindings([
+		new CommandBinding({"control":this.getElement("from_addr")})
+		,new CommandBinding({"control":this.getElement("date_time")})
+		,new CommandBinding({"control":this.getElement("from_name")})
+		,new CommandBinding({"control":this.getElement("to_addr")})
+		,new CommandBinding({"control":this.getElement("to_name")})
+		,new CommandBinding({"control":this.getElement("rely_addr")})
+		,new CommandBinding({"control":this.getElement("rely_name")})
+		,new CommandBinding({"control":this.getElement("subject")})
+		,new CommandBinding({"control":this.getElement("body")})
+		,new CommandBinding({"control":this.getElement("sent")})
+		,new CommandBinding({"control":this.getElement("sent_date_time")})
+	]);
+	
 }
 extend(MailForSending_View,ViewObjectAjx);

@@ -24,7 +24,8 @@
  * @param {string} options.URLParams
  * @param {string} options.title||options.caption
  * @param {string} options.content
- * @param {function} options.onClose     
+ * @param {function} options.onClose
+ * @param {object} options.params
  */
 
 //_blank - URL is loaded into a new WindowForm. This is default
@@ -109,7 +110,7 @@ WindowForm.prototype.DEF_TITLE_BAR = "0";
 WindowForm.prototype.DEF_TOP = "0";
 WindowForm.prototype.DEF_WIDTH = "600";
 WindowForm.prototype.DEF_WIN_NAME = "_blank";
-WindowForm.prototype.DEF_SCRIPT = "index.php";
+WindowForm.prototype.DEF_SCRIPT = "";//index.php
 WindowForm.prototype.DEF_CENTER_TOP_OFFSET = "20";
 
 WindowForm.prototype.LEFT_STEP = 50;
@@ -179,58 +180,75 @@ WindowForm.prototype.open = function(){
 		"top="+this.m_top+","+
 		"width="+this.m_width;
 		
-	var url = "";
-	if (this.m_script){
-		url = this.getURL();
-	}
+	var url = this.getURL();
 	// ,win_opts
 	
-	var name = (CommonHelper.isIE() && CommonHelper.getIEVersion()<=8)? "":this.m_name;
-
-	this.m_WindowForm = window.open(
-		url,
-		name,
-		(this.m_name=="_blank")? "":win_opts
-	);
+	if (CommonHelper.isIE() && CommonHelper.getIEVersion()<=9){
+		this.m_WindowForm = window.open("","",(this.m_name=="_blank")? "":win_opts);
+		if (this.m_WindowForm)this.m_WindowForm.location = url;
+	}
+	else{
+	/*console.log("this.m_WindowForm = window.open")
+	console.log("url="+url)
+	console.log("m_name="+this.m_name)
+	console.log("win_opts="+win_opts)
+	*/
+		this.m_WindowForm = window.open(
+			url,
+			this.m_name,
+			(this.m_name=="_blank")? "":win_opts
+		);	
+	}
+	
+	window.getApp().m_openedWindows[this.m_name] = this.m_WindowForm;
 	
 	if (!this.m_WindowForm){
 		throw new Error(this.ER_OPEN);
 	}
 	
 	if (url=="" && this.m_content){
-		this.m_WindowForm.document.write(this.m_content);
-	}
+		if(typeof this.m_content=="object"){
+			this.m_content.toDOM(this.m_WindowForm.document);
+		}
+		else{
+			this.m_WindowForm.document.write(this.m_content);
+		}
+		
+	}	
 	
+	this.initForm();
+	
+	return this.m_WindowForm;
+}
+
+WindowForm.prototype.initForm = function(){
+
 	var self = this;
-	
-	this.m_WindowForm.onClose = function(res){
-		//self.m_app.delOpenedForm(self.m_id);
-		//console.log("this.m_WindowForm.onClose")
+	this.m_WindowForm["onClose"] = function(res){
 		if (self.m_onClose){
 			self.m_onClose.call(self,self.m_WindowForm.closeResult);
 			self.m_WindowForm.onClose = undefined;
 		}
 	}
-	
-	
-	this.m_WindowForm.getParam = function(id){
+
+	this.m_WindowForm["getParam"] = function(id){
 		return self.getParam(id);
 	}
-	/*
-	window.getParam = function(id){
-		return self.getParam(id);
-	}
-	*/
-	this.m_WindowForm.getApp = function(){
+	
+	this.m_WindowForm["getApp"] = function(){
 		return window.getApp();
 	}
 	
-	window.m_childForms = window.m_childForms || {};
-	window.m_childForms[this.m_id] = this.m_WindowForm;
+	//window.m_childForms = window.m_childForms || {};
+	//window.m_childForms[this.m_id] = this.m_WindowForm;	
+	//ie hack
+	window["paramsSet"] = true;
+	window["getChildParam"] = this.m_WindowForm["getParam"];
 	
-	return this.m_WindowForm;
 }
+
 WindowForm.prototype.close = function(){
+	window.getApp().m_openedWindows[this.m_name] = undefined;
 	if (this.m_WindowForm){
 		this.m_WindowForm.close();
 	}
@@ -298,7 +316,7 @@ WindowForm.prototype.setScript = function(script){
 	this.m_script = script;
 }
 WindowForm.prototype.getHost = function(){
-	var host = this.m_host;
+	var host = this.m_host||"";
 	if (host && host.length && host.substring(host.length-1,host.length)!="/"){
 		host+="/";
 	}
@@ -309,11 +327,12 @@ WindowForm.prototype.setHost = function(host){
 }
 WindowForm.prototype.getURL = function(){	
 	var s = this.getScript();
-	if (!s){
-		return;
+	var p = this.getURLParams();
+	if (!s&&!p){
+		return "";
 	}	
 	var h = this.getHost();
-	var p = this.getURLParams();
+	
 	if (p){
 		p = "?"+p;
 	}

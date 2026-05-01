@@ -27,8 +27,8 @@
 }
 </xsl:template>
 
-<xsl:template match="jsScript[not(@compressed='TRUE') and not(@standalone='TRUE')]">
-		"js20/<xsl:value-of select="@file"/>"<xsl:if test="following-sibling::jsScript[not(@compressed='TRUE') and not(@standalone='TRUE')]">,</xsl:if>
+<xsl:template match="jsScript[not(@compressed='TRUE') and not(@jsDoc='FALSE') and not(@standalone='TRUE')]">
+		"js20/<xsl:value-of select="@file"/>"<xsl:if test="following-sibling::jsScript[not(@compressed='TRUE') and not(@jsDoc='FALSE') and not(@standalone='TRUE')]">,</xsl:if>
 </xsl:template>
 
 </xsl:stylesheet>

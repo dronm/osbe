@@ -10,7 +10,7 @@
  * @requires controls/ControlContainer.js
  
  * @param string id 
- * @param {namespace} options
+ * @param {object} options
  * @param {string} options.variantStorageName
  */
 function VariantStorageSaveView(id,options){
@@ -21,80 +21,77 @@ function VariantStorageSaveView(id,options){
 	this.m_onClose = options.onClose;
 
 	var model = new VariantStorageList_Model();
-	var contr = new VariantStorage_Controller(window.getApp());
+	var contr = new VariantStorage_Controller();
 	var pm = contr.getPublicMethod("get_list");
 	pm.setFieldValue("storage_name",options.variantStorageName);
 	
-	VariantStorageSaveView.superclass.constructor.call(this,id,"template",options);
+	options.addElement = function(){
+		this.addElement(new GridAjx(id+":variants",{
+			"model":model,
+			//"keyIds":["storage_name"],
+			"controller":contr,
+			"editInline":null,
+			"editWinClass":null,
+			"popUpMenu":null,
+			"showHead":false,
+			"commands":new GridCommandsAjx(id+":variants:cmd",{
+				"cmdInsert":false,
+				"cmdEdit":false,
+				"cmdDelete":true,
+				"cmdCopy":false,
+				"cmdPrint":false,
+				"cmdRefresh":false,
+				"cmdExport":false
+			}),		
+			"head":new GridHead(id+":variants:head",{
+				"elements":[
+					new GridRow(id+":variants:head:row0",{
+						"elements":[
+							new GridCellHead(id+":variants:head:row0:default_variant",{
+								"colAttrs":{"colspan":2},
+								"columns":[
+									new GridColumn({
+										"field":model.getField("default_variant"),
+										"assocClassList":{
+											"true":"glyphicon glyphicon-ok"
+										}
+									})
+								]
+							}),					
+							new GridCellHead(id+":variants:head:row0:variant_name",{
+								"columns":[
+									new GridColumn({"field":model.getField("variant_name")})
+								]
+							})
+						]
+					})
+				]
+			}),
+			"pagination":null,				
+			"autoRefresh":true,
+			"refreshInterval":0,
+			"rowSelect":true,
+			"focus":true
+		}));	
 	
-	this.addElement(new GridAjx(id+":variants",{
-		"model":model,
-		"keyIds":["storage_name"],
-		"controller":contr,
-		"editInline":null,
-		"editWinClass":null,
-		"popUpMenu":null,
-		"showHead":false,
-		"navigate":false,
-		"commands":new GridCommandsAjx(id+":variants:cmd",{
-			"cmdInsert":false,
-			"cmdEdit":false,
-			"cmdDelete":false,
-			"cmdCopy":false,
-			"cmdPrint":false,
-			"cmdRefresh":false,
-			"cmdExport":false,
-			"app":window.getApp()
-		}),		
-		"head":new GridHead(id+"-variants:head",{
-			"elements":[
-				new GridRow(id+":variants:head:row0",{
-					"elements":[
-						new GridCellHead(id+":variants:head:default_variant",{
-							"colAttrs":{"colspan":2},
-							"columns":[
-								new GridColumn("default_variant",{
-									"field":model.getField("default_variant"),
-									"assocClassList":{
-										"true":"glyphicon glyphicon-ok"
-									}
-								})
-							]
-						}),					
-						new GridCellHead(id+":variants:head:variant_name",{
-							"columns":[
-								new GridColumn("variant_name",{"field":model.getField("variant_name")})
-							]
-						})
-					]
-				})
-			]
-		}),
-		"pagination":null,				
-		"autoRefresh":true,
-		"refreshInterval":0,
-		"rowSelect":true,
-		"focus":true,
-		"app":window.getApp()
-	}));	
-	
-	//name
-	this.addElement(	
-		new EditString(id+":name",{
-			"focus":true,
-			"labelCaption":this.VARIANT_NAME_CAP,
-			"className":window.getApp().getBsCol(12)
-		})
-	);
+		//name
+		this.addElement(	
+			new EditString(id+":name",{
+				"focus":true,
+				"labelCaption":this.VARIANT_NAME_CAP,
+				"className":window.getApp().getBsCol(12)
+			})
+		);
 
-	//default_variant
-	this.addElement(	
-		new EditCheckBox(id+":default_variant",{
-			"labelCaption":this.DEF_VARIANT_CAP,
-			"className":window.getApp().getBsCol(12)
-		})
-	);
-
+		//default_variant
+		this.addElement(	
+			new EditCheckBox(id+":default_variant",{
+				"labelCaption":this.DEF_VARIANT_CAP,
+				"className":window.getApp().getBsCol(12)
+			})
+		);
+	}
+	VariantStorageSaveView.superclass.constructor.call(this,id,"TEMPLATE",options);
 
 	var grid = this.getElement("variants");
 	this.m_gridOnClick = grid.onClick;

@@ -115,7 +115,7 @@ class ParamsSQL {
 			$val_validated = $f->validate($val);
 			FieldSQLDate::formatForDb($val_validated,$val_db);
 		}
-		else if ($dataType==DT_TIME){
+		else if ($dataType==DT_TIME||$dataType==DT_INTERVAL){
 			$f = new FieldExtTime($id,$options);
 			$val_validated = $f->validate($val);
 			FieldSQLTime::formatForDb($val_validated,$val_db);
@@ -169,8 +169,8 @@ class ParamsSQL {
 		else if ($dataType==DT_DATE){
 			FieldSQLDate::formatForDb($val,$val_db);
 		}
-		else if ($dataType==DT_TIME){
-			FieldSQLTime::formatForDb($val,$val_db);
+		else if ($dataType==DT_TIME||$dataType==DT_INTERVAL){		
+			FieldSQLTime::formatForDb($this->dbLink,$val,$val_db);
 		}
 		else if ($dataType==DT_PWD){
 			FieldSQLString::formatForDb($this->dbLink,$val,$val_db);

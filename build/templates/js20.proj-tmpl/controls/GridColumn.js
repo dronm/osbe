@@ -1,9 +1,6 @@
 /**	
  * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2016
 
- * @extends
- * @requires
-
  * @class
  * @classdesc
 
@@ -19,22 +16,35 @@
  * @param {string} options.mask
  * @param {object} options.assocImageList
  * @param {object} options.assocValueList
- * @param {object} options.assocClassList       
+ * @param {object} options.assocClassList
+ * @param {string} options.assocIndex
  
  * @param {GridCell} options.cellClass
  * @param {object} options.cellOptions
  * @param {object} options.cellElements
  
  * Parameters for editting
- * @param {boolean} options.ctrlEdit if control can be editted
+ * @param {boolean} options.ctrlEdit[true] if control can be editted
  * @param {string} options.ctrlId
- * @param {object} options.ctrlClass
+ * @param {object} options.ctrlClass class function
+ * @param {function} options.ctrlClassResolve dynamically resolves class, function that returns class function
  * @param {string} options.ctrlBindFieldId
  * @param {Field} options.ctrlBindField
  * @param {Field} options.ctrlOptions
  
- * @param {object} options.searchOptions sType match/on_part/on_beg
+ * @param {object} options.searchOptions Search && Order options!
+ 			field Field
+ 			searchType [on_beg,on_match,on_part]
+ 			typeChange bool
+			condSgn string
+			ctrlClass
+ *
  * @param {bool} [options.searchable=true]
+ 
+ * @param {bool} [options.master=true]
+ * @param {object} options.detailViewClass
+ * @param {object} options.detailViewOptions
+ * @param {string} options.fieldAlias 
  */
  
 function GridColumn(options){
@@ -77,11 +87,13 @@ function GridColumn(options){
 	this.m_assocImageList = options.assocImageList;
 	this.m_assocValueList = options.assocValueList;
 	this.m_assocClassList = options.assocClassList;
+	this.m_assocIndex = options.assocIndex;
 	
 	//for editting
 	this.m_ctrlEdit = (options.ctrlEdit!=undefined)? options.ctrlEdit:true;
 	this.m_ctrlId = options.ctrlId;//Or field id
 	this.m_ctrlClass = options.ctrlClass;
+	this.m_ctrlClassResolve = options.ctrlClassResolve;
 	this.m_ctrlOptions = options.ctrlOptions;
 	this.m_ctrlBindFieldId = options.ctrlBindFieldId;
 	this.m_ctrlBindField = options.ctrlBindField;
@@ -90,6 +102,12 @@ function GridColumn(options){
 	
 	this.setSearchOptions(options.searchOptions);
 	this.setSearchable((options.searchable!=undefined)? options.searchable:true);
+	
+	this.setMaster(options.master);
+	this.setDetailViewClass(options.detailViewClass);
+	this.setDetailViewOptions(options.detailViewOptions);
+	
+	this.setFieldAlias(options.fieldAlias);
 }
 
 /* Constants */
@@ -112,14 +130,17 @@ GridColumn.prototype.m_mask;
 GridColumn.prototype.m_assocImageList;
 GridColumn.prototype.m_assocValueList;
 GridColumn.prototype.m_assocClassList;
+GridColumn.prototype.m_assocIndex;
 
 GridColumn.prototype.m_ctrlEdit;
 GridColumn.prototype.m_ctrlId;
 GridColumn.prototype.m_ctrlClass;
+GridColumn.prototype.m_ctrlClassResolve;
 GridColumn.prototype.m_ctrlOptions;
 GridColumn.prototype.m_ctrlBindFieldId;
 
 GridColumn.prototype.m_grid;
+GridColumn.prototype.m_gridCell;
 
 /* public methods */
 GridColumn.prototype.getCellClass = function(){
@@ -181,14 +202,14 @@ GridColumn.prototype.setMask = function(v){
 }
 
 GridColumn.prototype.getCtrlClass = function(){
-	return this.m_ctrlClass;
+	return (this.m_ctrlClassResolve && typeof this.m_ctrlClassResolve == "function")? this.m_ctrlClassResolve.call(this) : this.m_ctrlClass;
 }
 GridColumn.prototype.setCtrlClass = function(v){
 	this.m_ctrlClass = v;
 }
 
 GridColumn.prototype.getCtrlOptions = function(){
-	return this.m_ctrlOptions;
+	return ((typeof this.m_ctrlOptions == "function")? this.m_ctrlOptions.call(this) : this.m_ctrlOptions);
 }
 GridColumn.prototype.setCtrlOptions = function(v){
 	this.m_ctrlOptions = v;
@@ -220,6 +241,13 @@ GridColumn.prototype.getAssocValueList = function(){
 }
 GridColumn.prototype.setAssocValueList = function(v){
 	this.m_assocValueList = v;
+}
+
+GridColumn.prototype.getAssocIndex = function(){
+	return this.m_assocIndex;
+}
+GridColumn.prototype.setAssocIndex = function(v){
+	this.m_assocIndex = v;
 }
 
 GridColumn.prototype.getAssocImageList = function(){
@@ -290,5 +318,37 @@ GridColumn.prototype.getSearchable = function(){
 }
 GridColumn.prototype.setSearchable = function(v){
 	this.m_searchable = v;
+}
+GridColumn.prototype.getMaster = function(){
+	return this.m_master;
+}
+GridColumn.prototype.setMaster = function(v){
+	this.m_master = v;
+}
+GridColumn.prototype.getDetailViewClass = function(){
+	return this.m_detailViewClass;
+}
+GridColumn.prototype.setDetailViewClass = function(v){
+	this.m_detailViewClass = v;
+}
+GridColumn.prototype.getDetailViewOptions = function(){
+	return this.m_detailViewOptions;
+}
+GridColumn.prototype.setDetailViewOptions = function(v){
+	this.m_detailViewOptions = v;
+}
+
+GridColumn.prototype.getGridCell = function(){
+	return this.m_gridCell;
+}
+GridColumn.prototype.setGridCell = function(v){
+	this.m_gridCell = v;
+}
+
+GridColumn.prototype.getFieldAlias = function(){
+	return this.m_fieldAlias;
+}
+GridColumn.prototype.setFieldAlias = function(v){
+	this.m_fieldAlias = v;
 }
 

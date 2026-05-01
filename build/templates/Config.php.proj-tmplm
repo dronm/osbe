@@ -35,6 +35,9 @@ define('USER_JS_PATH', JS_LIB.DIRECTORY_SEPARATOR);
 /* path to css */
 define('USER_CSS_PATH', JS_LIB.DIRECTORY_SEPARATOR. 'custom-css'.DIRECTORY_SEPARATOR);
 
+/* if no controller set in command this controller will be used as default */
+define('CUSTOM_CONTROLLER', 'ControllerDb');
+
 define('PARAM_CONTROLLER', 'c');
 define('PARAM_METHOD', 'f');
 define('PARAM_VIEW', 'v');
@@ -88,10 +91,16 @@ define('TECH_EMAIL', '{{TECH_EMAIL}}');
 define('AUTHOR', '{{AUTHOR}}');
 
 /* Session expiration limit in seconds */
-define('SESSION_EXP_SEC', 0);
+define('SESSION_LIVE_SEC', 0);
+define('SESSION_AFTER_EXPIR_METHODS', 'logout,login_refresh,login,login_k');
+define('SESSION_AFTER_DIED_METHODS', 'logout,login,login_k');
+define('SESSION_KEY', 'poegtrcu,w4ctgyuv231554fcv0t43VYBhw4gce5rcw18457f6qwe5fc7rfg16c27f5f4qw982ftg4ca65f4w');
 /* list of comma separated methods that can be called even when session has expired */
 define('TOKEN_AFTER_EXPIR_METHODS', 'logout,login_refresh');
 
 //**************************  USER DEFINED CINSTANTS ******************************************************
 
+define('GITHUB_USER','{{GITHUB_USER}}');
+
+define('DEFAULT_COLOR_PALETTE','blue-400');
 ?>

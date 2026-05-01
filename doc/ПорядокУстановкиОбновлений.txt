@@ -1,0 +1,106 @@
+Рабочий ProjectManager в проекте экспертизы
+1) Закрытие версии. Что просиходит с SQL?
+При работе все команды SQL идут через last_update.sql, при выполнении (без ошибок) все попадает в update.sql,
+при обновлении это копируется в updates/sql
+нужно все разделить по версиям! т.е. updates/1.0001/sql скрипты для этой версии
+	1. При выполнении last_update.sql - включать в изменния, остальные нет!
+	2. Копировать изменные SQL в папку с обновлениями
+	3) Копировать в папку с обновлениями изменения по
+		controllers
+		models
+		db
+		doc
+		fonts
+		functions
+		img
+		permissions
+		tmpl
+		views
+		/version.php
+	Описать структуру в каком то файле!
+ProjectManager_View команда отправить обновление в рабочую базу, указав хост/ИмяПользователя+Пароль
+	Автороризация
+	Пересылка архива
+На стороне сервера прием, распаковка. Если обновление вручную - ничего не делать, если указано время установки - новое задание крон!	
+
+
+Управление регламентными заданиями проекта:
+1) таблица в базе, модель, контроллеры, формы
+cron_jobs scheduled_jobs
+id serial
+name String 100
+comment_text text
+
+minute
+hour
+month_day 1-31
+month 1-12
+week_day 0-6
+command text
+schedule string 20
+
+active bool default false
+
+Раписание, скрипт, кто установил (юзер), дата время изменения, признак активности, результат выполнения(?)
+минута час день_месяца месяц день_недели команда
+минуты 	0-59 	
+часы 	0-23 	
+дни месяца 	1-31 	
+месяцы 	1-12 	можно задавать и в 3-х буквенном варианте
+дни недели 	0-6 	можно задавать и в 3-х буквенном варианте (0=воскресенье)
+
+Символ '*' подразумевает - любое значение. 
+@reboot 	Запуск при загрузке 	
+@yearly 	Раз в год 	0 0 1 1 *
+@annually 	Тоже что и @yearly 	
+@monthly 	Раз в месяц 	0 0 1 * *
+@weekly 	Раз в неделю 	0 0 * * 0
+@daily 	Раз в день 	0 0 * * *
+@midnight 	В полночь (00:00) 	
+@hourly 	Каждый час 	0 * * * * 
+
+
+
+
+3) Сервер событий.
+<controller id="Order>
+	<publicMethod id="get_make_list" cashable="TRUE>- Кэшируемый метод!
+		<field id="date" required="TRUE cashKey="TRUE" /> - Это ключ!!! для очистки кэша!
+		<dependantEvents id="Shipment.insert"/> это события, которые будут очищать кэш при совпадении ключей
+		<dependantEvents id="Shipment.update"/>
+		<dependantEvents id="Shipment.delete"/>
+	</publicMethod>
+</controller>
+
+При вызове Order->get_make_list(date) должен быть проанализирован КЭШ! если есть отдать из кэша, нет сохранить в кэш
+c=Order_Controller&f=get_make_list&date=2020-10-19 &v=ViewXML&t=
+v=ViewXML - в ключе не участвует, удалять все view!!!
+HASH1 =  (Controller + function + all parameters )
+HASH2 = all other params
+Файл кэша hash( c=Order_Controller&f=get_make_list&date=2020-10-19 ) = HASH1.HASH2
+CRC-32 or Adler-32
+For clearing hash use HASH1.*
+
+Automatic script generation for clearing cash for Node js event server!
+
+
+
+4) КЭШ
+1) cmd.php
+отдача кэша, если метод контроллера поддерживает кэширование и есть кэш
+!!! и он не истек
+
+2) Класс View складывание в кэш если метод поддерживает кэширование
+public function write
++headers!
+
+3) Инвалидация кэша
+например метод get_list по событию
+	Contr.insert,
+	Contr.update Если ключи есть в списке!
+	Contr.delete Если ключи есть в списке!
+	
+Casher
+
+
+	

@@ -71,16 +71,27 @@ function ViewDialog(id,options){
 	this.m_insertMethId = options.insertMethodId || this.DEF_INSERT_METH_ID;
 	this.m_updateMethId = options.updateMethodId || this.DEF_UPDATE_METH_ID;		
 	
-	this.m_keyEvent=function(event){
+	//escape
+	this.m_keyEvent = options.keyEvent || function(event){
 		event = EventHandler.fixMouseEvent(event);
 		var key_code = (event.charCode) ? event.charCode : event.keyCode;
 		if (key_code==27){
-			self.onCancel();
 			event.preventDefault();
+			//event.stopPropagation();
+		
+			self.onCancel();
 			return false;
 		}
 	};
 	
+	//history back
+	/*this.m_backEvent = function(event){
+		console.log("m_backEvent ")
+		event.preventDefault();
+		self.onCancel();
+		return false;
+	}*/
+		
 	this.m_customWriteMethod = options.customWriteMethod;
 	
 	this.m_cmdControls = options.cmdControls;
@@ -149,6 +160,12 @@ ViewDialog.prototype.toDOM = function(parent){
 	if (this.m_keyEvent){
 		EventHandler.addEvent(this.getWinObjDocum(),'keydown',this.m_keyEvent,false);
 	}
+	/*if(this.m_backEvent){
+	console.log("Adding popstate")
+		history.pushState({"a":1}, '');
+		EventHandler.addEvent(this.getWinObjDocum(),'popstate',this.m_backEvent,false);	
+	}*/
+	
 	this.m_node.scrollIntoView();
 }
 ViewDialog.prototype.removeDOM = function(){		
@@ -170,12 +187,19 @@ ViewDialog.prototype.removeDOM = function(){
 	if (this.m_keyEvent){
 		EventHandler.removeEvent(this.getWinObjDocum(),'keydown',this.m_keyEvent,false);
 	}
+	/*if(this.m_backEvent){
+		console.log("removeEvent popstate")
+		EventHandler.removeEvent(this.getWinObjDocum(),'popstate',this.m_backEvent,false);	
+	}*/
+	
 	ViewDialog.superclass.removeDOM.call(this);
 }
 ViewDialog.prototype.readData = function(async,isCopy){
+
 	this.m_isCopy = (isCopy==undefined)? false:isCopy;
 	this.setIsNew(this.m_isCopy);
 	ViewDialog.superclass.readData.call(this,async);	
+	
 	
 	if (this.m_beforeOpen){		
 		this.m_beforeOpen(this.getReadController(),false,isCopy);
@@ -215,26 +239,12 @@ ViewDialog.prototype.onWriteOk = function(resp){
 		var meth_id = this.getWriteMethodId();
 		var pm = contr.getPublicMethodById(meth_id);
 		if (pm.paramExists(contr.PARAM_RET_ID)){			
-			if (resp.modelExists("LastIds")){
-				var model = resp.getModelById("LastIds",true);
+			if (resp.modelExists("InsertedId_Model")){
+				var model = resp.getModelById("InsertedId_Model",true);
 				if (model.getNextRow()){
 					for (var id in model.m_fields){
 						this.setReadIdValue(id,model.getFieldById(id).getValue());
 					}
-					/*
-					pm = contr.getPublicMethodById(this.getReadMethodId());
-					for (var id in model.m_fields){
-						var v = model.getFieldById(id).getValue();
-						if (pm.paramExists(id)){
-							pm.setParamValue(id,v);
-						}
-						
-						if (this.m_bindings[this.getId()+"_"+id]){
-							this.m_bindings[this.getId()+"_"+id].control.setValue(v);
-						}
-						
-					}
-					*/
 					this.setIsNew(false);
 				}
 			}

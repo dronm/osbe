@@ -1,7 +1,7 @@
 /**	
  * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2017
 
- * @extends
+ * @extends ViewAjx
  * @requires core/extend.js  
 
  * @class
@@ -35,6 +35,7 @@ function ViewList_View(id,options){
 	};
 	
 	var popup_menu = new PopUpMenu();
+	var self = this;
 	
 	var grid = new GridAjx(id+":grid",{
 		"model":model,
@@ -53,13 +54,17 @@ function ViewList_View(id,options){
 				"onCommand":function(){
 					var fields = this.m_grid.getModelRow();
 					if (fields){
-						var form = new WindowFormObject({
-							"app":window.getApp(),
-							"formName":fields.t.getValue(),
+						var href = self.getObjectHref(fields);
+						var win = window.open(href, "_blank");
+						win.focus();						
+						/*
+						(new WindowFormObject({
+							"formName":self.getId(),// "_blank",
+							"template":fields.t.getValue(),
 							"controller":fields.c.getValue(),
 							"method":fields.f.getValue()
-						});
-						form.open();
+						})).open();
+						*/
 					}
 				}
 			}),
@@ -80,7 +85,19 @@ function ViewList_View(id,options){
 						new GridCellHead(id+":grid:head:user_descr",{
 							"value":this.GRID_COL_CAP,
 							"columns":[
-								new GridColumn({"field":model.getField("user_descr")})
+								new GridColumn({
+									"field":model.getField("user_descr")
+									,"formatFunction":function(fields,cell){
+										var href = self.getObjectHref(fields);
+										var cell_n = cell.getNode();
+										var t_tag = document.createElement("A");
+										t_tag.setAttribute("href",href);
+										t_tag.setAttribute("target","_blank");
+										t_tag.setAttribute("title",self.OPEN_WIN_TITLE);
+										t_tag.textContent = fields.user_descr.getValue();
+										cell_n.appendChild(t_tag);										
+									}
+								})
 							]
 						})
 					]
@@ -103,7 +120,7 @@ function ViewList_View(id,options){
 	
 	this.addElement(grid);
 }
-extend(ViewList_View,ViewAjx);
+extend(ViewList_View,ViewAjxList);
 
 /* Constants */
 
@@ -111,7 +128,21 @@ extend(ViewList_View,ViewAjx);
 /* private members */
 
 /* protected*/
-
+ViewList_View.prototype.getObjectHref = function(fields){
+	var href = "";
+	var c = fields.c.getValue();
+	var f = fields.f.getValue();
+	var t = fields.t.getValue();
+	if(c&&c.length)href+= (href==""? "":"&")+"c="+c;
+	if(f&&f.length)href+= (href==""? "":"&")+"f="+f;
+	if(t&&t.length)href+= (href==""? "":"&")+"t="+t;
+	href+= (href==""? "":"&")+"v=Child";
+	
+	window.getChildParam = function(){	
+	}
+	
+	return "?"+href;
+}
 
 /* public methods */
 

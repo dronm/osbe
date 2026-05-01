@@ -1,22 +1,26 @@
 /**	
  * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2017
 
- * @extends
- * @requires core/extend.js  
+ * @extends ButtonCtrl
+ * @requires core/extend.js
+ * @requires ButtonCtrl.js     
 
  * @class
  * @classdesc
  
  * @param {string} id - Object identifier
  * @param {namespace} options
- * @param {string} options.className
+ * @param {string} options.viewContext
+ * @param {functions} options.onGetData 
  */
 function ButtonOrgSearch(id,options){
 	options = options || {};	
 	
 	options.glyph = "glyphicon-search";
+	options.title = this.TITLE;
 	this.m_viewContext = options.viewContext;
 	this.m_onGetData = options.onGetData;
+	this.m_onGetAttrs = options.onGetAttrs;
 	
 	var self = this;
 	
@@ -30,6 +34,19 @@ function ButtonOrgSearch(id,options){
 extend(ButtonOrgSearch,ButtonCtrl);
 
 /* Constants */
+ButtonOrgSearch.prototype.DEF_ATTRS = 	{
+		"Наименование":"name",
+		"Наименование полное":"name_full",
+		"ФИО руководителя":"dir_name",
+		"Должность руководителя":"dir_post",
+		"ИНН":"inn",
+		"КПП":"kpp",
+		"ОГРН":"ogrn",
+		"ОКПО":"okpo",
+		"ОКВЭД":"okved",
+		"ОКАТО":"okato"
+		//"Адрес":"legal_address"
+	};
 
 
 /* private members */
@@ -45,6 +62,7 @@ ButtonOrgSearch.prototype.doSearch = function(){
 	}
 	var pm = (new ClientSearch_Controller()).getPublicMethod("search");
 	pm.setFieldValue("query",q);
+	
 	this.setEnabled(false);
 	var self = this;
 	pm.run({
@@ -70,16 +88,11 @@ ButtonOrgSearch.prototype.doSearch = function(){
 }
 
 ButtonOrgSearch.prototype.applyResult = function(model){
-	var attr_coresp = {
-		"Наименование":"name",
-		"ФИО руководителя":"dir_name",
-		"Должность руководителя":"dir_post",
-		"ИНН":"inn",
-		"КПП":"kpp",
-		"ОГРН":"ogrn",
-		"ОКПО":"okpo",
-		"ОКВЭД":"okved"
-		//"Адрес":"legal_address"
+	var attr_coresp;
+	if(this.m_onGetAttrs){
+		attr_coresp = this.m_onGetAttrs();
+	}else{
+		attr_coresp = this.DEF_ATTRS;
 	}
 	while(model.getNextRow()){
 		var param = model.getFieldValue("param");

@@ -1,0 +1,19 @@
+-- Trigger: ra_{{REG_TABLE}}_after on ra_{{REG_TABLE}}
+-- DROP TRIGGER ra_{{REG_TABLE}}_after ON ra_{{REG_TABLE}};
+
+CREATE TRIGGER ra_{{REG_TABLE}}_after
+  AFTER INSERT OR UPDATE OR DELETE
+  ON ra_{{REG_TABLE}}
+  FOR EACH ROW
+  EXECUTE PROCEDURE ra_{{REG_TABLE}}_process();
+
+
+-- Trigger: ra_{{REG_TABLE}}_before on ra_{{REG_TABLE}}
+-- DROP TRIGGER {{SCHEMA}}.ra_{{REG_TABLE}}_before ON ra_{{REG_TABLE}};
+
+CREATE TRIGGER ra_{{REG_TABLE}}_before
+  BEFORE INSERT OR UPDATE OR DELETE
+  ON ra_{{REG_TABLE}}
+  FOR EACH ROW
+  EXECUTE PROCEDURE ra_{{REG_TABLE}}_process();
+

@@ -1,20 +1,15 @@
-/* Copyright (c) 2016 
-	Andrey Mikhalevich, Katren ltd.
-*/
-/*	
-	Description
-*/
-/** Requirements
- * @requires 
- * @requires core/extend.js  
-*/
+/**	
+ * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2016
 
-/* constructor
-@param string id
-@param object options{
+ * @extends EditSelectOption
+ * @requires core/extend.js
+ * @requires EditSelectOption.js     
 
-}
-*/
+ * @class
+ * @classdesc
+ 
+ * @param {object} options
+ */
 function EditSelectOptionRef(id,options){
 	options = options || {};	
 	
@@ -33,10 +28,10 @@ extend(EditSelectOptionRef,EditSelectOption);
 /* public methods */
 EditSelectOptionRef.prototype.getValue = function(){
 	var str = EditSelectOptionRef.superclass.getValue.call(this);
-	return CommonHelper.json2obj(str);
+	return CommonHelper.unserialize(str);
 }
 EditSelectOptionRef.prototype.setValue = function(keys){
-	var str = CommonHelper.array2json(keys);
+	var str = CommonHelper.serialize(keys);
 	EditSelectOptionRef.superclass.setValue.call(this,str);
 }
 

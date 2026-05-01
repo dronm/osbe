@@ -30,6 +30,8 @@ class Model {
 	private $sysModel;
 	private $nameSpace;
 	
+	private $calcHash;
+	
 	public function __construct($options=NULL){
 		$this->rows=array();
 		$this->setRowBOF();
@@ -51,15 +53,19 @@ class Model {
 			if (isset($options['sysModel'])){
 				$this->setSysModel($options['sysModel']);
 			}
+
+			if (isset($options['calcHash'])){
+				$this->setCalcHash($options['calcHash']);
+			}
 			
 		}
 	}
 	
 	public function checkField($id){
-		if ($this->fieldExists($id))
-			return TRUE;
-		else 
-			throw new Exception(sprintf(Model::ER_PROPERTY_NOT_FOUND,$id, get_class($this)));
+		if (!$this->fieldExists($id)){
+			throw new Exception(sprintf(self::ER_PROPERTY_NOT_FOUND,$id,get_class($this)));
+		}
+		return TRUE;
 	}	
 	
 	/*
@@ -129,6 +135,12 @@ class Model {
 	public function setSysModel($v){
 		$this->sysModel = $v;
 	}
+	public function getCalcHash(){
+		return $this->calcHash;
+	}
+	public function setCalcHash($v){
+		$this->calcHash = $v;
+	}
 	
 	public function getRowsPerPage(){
 		return $this->rowsPerPage;
@@ -169,10 +181,14 @@ class Model {
 		$this->nameSpace = $nameSpace;
 	}
 	
-	/*
-	*/
-	public function insert(&$row=NULL){
-		array_push($this->rows, (!is_null($row))? $row:$this->fields);
+	/**
+	 * needId can be row object for backward compatibility
+	 */
+	public function insert($needId=FALSE,$row=NULL){
+		if (!is_bool($needId) && is_null($row)){
+			$row = $needId;
+		}
+		array_push($this->rows, (!is_null($row))? $row : $this->fields);
 		/*
 		$f = clone $this->fields;
 		if (!is_null($row)){
@@ -266,11 +282,11 @@ class Model {
 				$field = $fields->current();
 				//echo 'Model->dataToXML field id='.$field->getAlias();
 				$data.= $field->dataToXML();
-				if ($field->getPrimaryKey()){
+				/*if ($field->getPrimaryKey()){
 					//primary key
 					$id.=($id=='')?'':',';
 					$id.=$field->getValue();
-				}
+				}*/
 				$fields->next();
 			}
 			/*
@@ -289,11 +305,9 @@ class Model {
 	}
 	public function metadataToXML(){
 		$result = sprintf('<metadata modelId="%s">',$this->getId());
-		/*
 		foreach($this->fields as $field){
 			$result.=$field->metadataToXML();
 		}
-		*/
 		$result.='</metadata>';
 		return $result;
 	}

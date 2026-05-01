@@ -10,7 +10,7 @@
   
  * @param {string} id
  * @param {namespace} options
- * @param {bool} [options.notSelectedLast=false]
+ * @param {bool} [options.addNotSelected=false]
  * @param {Edit} [options.optionClass=EditRadio]
  */
 function EditRadioGroup(id,options){
@@ -36,9 +36,9 @@ EditRadioGroup.prototype.addElement = function(ctrl){
 	this.setElement(ctrl.getId(),ctrl);
 }
 
-/*
-Возвращает порядковый номер выбранного элемента
-*/
+/**
+ * Возвращает порядковый номер выбранного элемента
+ */
 EditRadioGroup.prototype.getIndex = function(){
 	var i = 0;
 	for (var elem_id in this.m_elements){
@@ -61,9 +61,9 @@ EditRadioGroup.prototype.setValue = function(id){
 	}
 }
 
-/*
-Выбирает элемент с заданным порядковым номером, с остальных выбор снимается
-*/
+/**
+ * Выбирает элемент с заданным порядковым номером, с остальных выбор снимается
+ */
 EditRadioGroup.prototype.setValueByIndex = function(ind){
 	var i=0;
 	for (var elem_id in this.m_elements){
@@ -74,21 +74,24 @@ EditRadioGroup.prototype.setValueByIndex = function(ind){
 	}
 }
 
-/*
-Возвращает value выбранного элемента
-*/
+/**
+ * Возвращает value выбранного элемента
+ */
 EditRadioGroup.prototype.getValue = function(){
+	var res = null;
 	for (var elem_id in this.m_elements){
 		if (this.m_elements[elem_id].m_node.nodeName.toLowerCase()=="input"
 		&& this.m_elements[elem_id].m_node.checked){
-			return this.m_elements[elem_id].m_node.value;
+			res = this.m_elements[elem_id].m_node.value;
+			break;
 		}
 	}
+	return res;
 }
 
-/*
-Возвращает descr выбранного элемента
-*/
+/**
+ * Возвращает descr выбранного элемента
+ */
 EditRadioGroup.prototype.getValueDescr = function(){
 	for (var elem_id in this.m_elements){
 		if (this.m_elements[elem_id].m_node.nodeName.toLowerCase()=="input"

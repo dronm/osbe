@@ -38,18 +38,21 @@ ValidatorInt.prototype.m_notZero;
 ValidatorInt.prototype.m_unsigned;
 
 ValidatorInt.prototype.correctValue = function(v){
-	v = parseInt(v);
+	v = this.toNumber(v);
 	if (isNaN(v)) v = null;
 	return v;
 }
 
+ValidatorInt.prototype.toNumber = function(v){
+	return parseInt(v);
+}
+
 ValidatorInt.prototype.validate = function(v){
-	var n = parseInt(v);
-	if (this.getRequired() && isNaN(n)){
-		//console.log("val="+n)
-		throw new Error(this.ER_INVALID);		
-	}
+	var n = this.toNumber(v);
 	
+	if (this.getRequired() && isNaN(n)){
+		throw new Error(this.ER_INVALID);		
+	}	
 	if (this.m_maxValue && n>this.m_maxValue){
 		throw new Error(CommonHelper.format(this.ER_VIOL_MAX,[n]));
 	}

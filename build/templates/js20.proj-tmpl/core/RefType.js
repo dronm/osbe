@@ -4,8 +4,6 @@
  * @class
  * @classdesc
 
- * @requires
-  
  * @param {Object} options
  * @param {Object} options.keys key=value pairs
  * @param {string} options.descr
@@ -66,10 +64,10 @@ RefType.prototype.getKey = function(v){
 
 RefType.prototype.isNull = function(){	
 	var k = this.getKeys();
-	var r = (k==undefined);
+	var r = (k==undefined || k==null || CommonHelper.isEmpty(k));
 	if (!r){
 		for(v in k){
-			r = (k[v]===null);
+			r = (k[v]===null||k[v]==="null");
 			if (r){			
 				break;
 			}
@@ -79,7 +77,6 @@ RefType.prototype.isNull = function(){
 }
 
 RefType.prototype.toJSON = function(){
-	//return {"keys":this.getKeys(),"descr":this.getDescr()};
 	return {
 		"keys":this.getKeys(),
 		"descr":this.getDescr(),
@@ -87,3 +84,13 @@ RefType.prototype.toJSON = function(){
 	}
 	;
 }
+
+RefType.prototype.getFormattedValue = function(){
+	return this.getDescr();
+}
+
+/*
+RefType.prototype.toString = function(){
+	return this.toJSON();
+}
+*/

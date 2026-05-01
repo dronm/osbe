@@ -1,0 +1,132 @@
+-- Function: rg_{{REG_TABLE}}_update_periods(timestampTZ{{#DIMENSIONS}},{{FIELD_SQL_DATA_TYPE}}{{/DIMENSIONS}}{{#FACTS}},{{FIELD_SQL_DATA_TYPE}}{{/FACTS}})
+
+-- DROP FUNCTION rg_{{REG_TABLE}}_update_periods(timestampTZ{{#DIMENSIONS}},{{FIELD_SQL_DATA_TYPE}}{{/DIMENSIONS}}{{#FACTS}},{{FIELD_SQL_DATA_TYPE}}{{/FACTS}});
+
+CREATE OR REPLACE FUNCTION rg_{{REG_TABLE}}_update_periods(
+    in_date_time timestampTZ
+    {{#DIMENSIONS}}
+    ,in_{{FIELD_ID}} {{FIELD_SQL_DATA_TYPE}}
+    {{/DIMENSIONS}}
+    {{#FACTS}}
+    ,in_{{FIELD_ID}} {{FIELD_SQL_DATA_TYPE}}
+    {{/FACTS}}
+    )
+  RETURNS void AS
+$BODY$
+DECLARE
+	v_loop_rg_period timestamp without time zone;
+	v_calc_interval interval;			  			
+	CURRENT_BALANCE_DATE_TIME timestamp without time zone;
+	CALC_DATE_TIME timestamp without time zone;
+BEGIN
+	CALC_DATE_TIME = rg_calc_period('{{REG_ID}}'::reg_types);
+	v_loop_rg_period = rg_calc_period_start('{{REG_ID}}'::reg_types,in_date_time);
+	v_calc_interval = rg_calc_interval('{{REG_ID}}'::reg_types);
+	IF v_calc_interval IS NULL THEN
+		RAISE EXCEPTION 'Interval for register "{{REG_ID}}" not defined.';
+	END IF;
+	
+	LOOP
+		UPDATE rg_{{REG_TABLE}}
+		SET
+			{{#FACTS}}
+			{{#NOT_FIRST}},{{/NOT_FIRST}}{{FIELD_ID}} = {{FIELD_ID}} + in_{{FIELD_ID}}
+			{{/FACTS}}
+		WHERE 
+			date_time=v_loop_rg_period
+			{{#DIMENSIONS}}
+			AND {{FIELD_ID}} = in_{{FIELD_ID}}
+			{{/DIMENSIONS}}
+			;
+			
+		IF NOT FOUND THEN
+			BEGIN
+				INSERT INTO rg_{{REG_TABLE}} (date_time
+				{{#DIMENSIONS}}
+				,{{FIELD_ID}}
+				{{/DIMENSIONS}}
+				{{#FACTS}}
+				,{{FIELD_ID}}
+				{{/FACTS}}
+				)				
+				VALUES (v_loop_rg_period
+				{{#DIMENSIONS}}
+				,in_{{FIELD_ID}}
+				{{/DIMENSIONS}}
+				{{#FACTS}}
+				,in_{{FIELD_ID}}
+				{{/FACTS}}
+				);
+			EXCEPTION WHEN OTHERS THEN
+				UPDATE rg_{{REG_TABLE}}
+				SET
+					{{#FACTS}}
+					{{#NOT_FIRST}},{{/NOT_FIRST}}{{FIELD_ID}} = {{FIELD_ID}} + in_{{FIELD_ID}}
+					{{/FACTS}}
+				WHERE date_time = v_loop_rg_period
+				{{#DIMENSIONS}}
+				AND  {{FIELD_ID}} = in_{{FIELD_ID}}
+				{{/DIMENSIONS}}
+				;
+			END;
+		END IF;
+		v_loop_rg_period = v_loop_rg_period + v_calc_interval;
+		IF v_loop_rg_period > CALC_DATE_TIME THEN
+			EXIT;  -- exit loop
+		END IF;
+	END LOOP;
+	
+	--Current balance
+	CURRENT_BALANCE_DATE_TIME = rg_current_balance_time();
+	UPDATE rg_{{REG_TABLE}}
+	SET
+		{{#FACTS}}
+		{{#NOT_FIRST}},{{/NOT_FIRST}}{{FIELD_ID}} = {{FIELD_ID}} + in_{{FIELD_ID}}
+		{{/FACTS}}
+	WHERE 
+		date_time=CURRENT_BALANCE_DATE_TIME
+		{{#DIMENSIONS}}
+		AND {{FIELD_ID}} = in_{{FIELD_ID}}
+		{{/DIMENSIONS}}
+		;
+		
+	IF NOT FOUND THEN
+		BEGIN
+			INSERT INTO rg_{{REG_TABLE}} (date_time
+			{{#DIMENSIONS}}
+			,{{FIELD_ID}}
+			{{/DIMENSIONS}}
+			{{#FACTS}}
+			,{{FIELD_ID}}
+			{{/FACTS}}
+			)
+			VALUES (CURRENT_BALANCE_DATE_TIME
+			{{#DIMENSIONS}}
+			,in_{{FIELD_ID}}
+			{{/DIMENSIONS}}
+			{{#FACTS}}
+			,in_{{FIELD_ID}}
+			{{/FACTS}}
+			);
+		EXCEPTION WHEN OTHERS THEN
+			UPDATE rg_{{REG_TABLE}}
+			SET
+				{{#FACTS}}
+				{{#NOT_FIRST}},{{/NOT_FIRST}}{{FIELD_ID}} = {{FIELD_ID}} + in_{{FIELD_ID}}
+				{{/FACTS}}
+			WHERE 
+				date_time=CURRENT_BALANCE_DATE_TIME
+				{{#DIMENSIONS}}
+				AND {{FIELD_ID}} = in_{{FIELD_ID}}
+				{{/DIMENSIONS}}
+				;
+		END;
+	END IF;					
+	
+END;
+$BODY$
+  LANGUAGE plpgsql VOLATILE
+  COST 100;
+ALTER FUNCTION rg_{{REG_TABLE}}_update_periods(timestampTZ{{#DIMENSIONS}},{{FIELD_SQL_DATA_TYPE}}{{/DIMENSIONS}}{{#FACTS}},{{FIELD_SQL_DATA_TYPE}}{{/FACTS}})
+  OWNER TO ;
+

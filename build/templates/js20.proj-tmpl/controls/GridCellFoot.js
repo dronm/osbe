@@ -1,26 +1,32 @@
-/* Copyright (c) 2016
-	Andrey Mikhalevich, Katren ltd.
-*/
-/*	
-	Description
-*/
+/**	
+ * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2016
 
-/** Requirements
- * @requires common/functions.js
-*/
+ * @class
+ * @classdesc
 
-/* constructor
-@param string id
-@param object options{
-	@param string calcOper sum/avg
-}
-*/
+ * @param {object} options
+ * @param {object} options.colAttrs Column attributes
+ * @param {bool} options.calc
+ * @param {function} options.calcBegin
+ * @param {function} options.calcEnd
+ * @param {enum} options.calcOper sum/avg
+ * @param {string} options.calcFieldId
+ * @param {string} options.totalFieldId 
+ */
 function GridCellFoot(id,options){
 	options = options || {};
 	GridCellFoot.superclass.constructor.call(this,id,options);
 		
 	this.setCalc(options.calc);
 	this.setCalcBegin(options.calcBegin);
+	
+	if(!options.calcEnd && options.totalFieldId){
+		options.calcEnd = (function(totalFieldId){
+			return function(m){
+				this.setValue(m.getAttr(totalFieldId));
+			}
+		})(options.totalFieldId);
+	}
 	this.setCalcEnd(options.calcEnd);	
 	
 	this.setCalcOper(options.calcOper);
@@ -63,30 +69,33 @@ GridCellFoot.prototype.getCalcTotal = function(v){
 GridCellFoot.prototype.setCalcOper = function(v){
 	this.m_calcOper = v;
 	
-	var self = this;
+	//var self = this;
 	if (this.m_calcOper){
 	
 		this.m_calc = this.m_calc || function(model){
-			self.setTotal(self.getTotal()+model.getFieldValue(this.m_calcFieldId));
+			var f_val = model.getFieldValue(this.m_calcFieldId);
+			if(isNaN(f_val))f_val = 0;
 			
-			if (self.m_calcOper == self.CALC_OPER_AVG){
+			this.setTotal(this.getTotal()+f_val);
+			
+			if (this.m_calcOper == this.CALC_OPER_AVG){
 				this.m_count+=1;
 			}
 		}
 		this.m_calcBegin = this.m_calcBegin || function(){
-			self.setTotal(0);		
+			this.setTotal(0);		
 			this.m_count = 0;
 		}
 		this.m_calcEnd = this.m_calcEnd || function(){
 			var res;
-			if (self.m_calcOper == self.CALC_OPER_AVG){
-				res = (this.m_count>0)? (self.getTotal() / this.m_count) : 0;
+			if (this.m_calcOper == this.CALC_OPER_AVG){
+				res = (this.m_count>0)? (this.getTotal() / this.m_count) : 0;
 			}
 			else{
-				res = self.getTotal();
+				res = this.getTotal();
 			}
 		
-			self.setValue(res);
+			this.setValue(res);
 		}
 	}
 }

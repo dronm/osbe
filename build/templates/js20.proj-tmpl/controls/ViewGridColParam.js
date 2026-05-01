@@ -13,7 +13,7 @@
 function ViewGridColParam(id,options){
 	options = options || {};	
 
-	ViewGridColParam.superclass.constructor.call(this,id,"div",options);
+	ViewGridColParam.superclass.constructor.call(this,id,"DIV",options);
 	
 	this.m_paramId = options.paramId;
 	this.m_variantStorageName = options.variantStorageName;
@@ -53,11 +53,11 @@ function ViewGridColParam(id,options){
 			"cmdSearch":false,
 			"cmdColManager":false,
 			"cmdAllCommands":false,		
-			"commands":[
-				new GridCmdRowUp(id+":grid:cmd:rowUp"),
-				new GridCmdRowDown(id+":grid:cmd:rowDown"),
-			],
-			"popUpMenu":popup_menu,
+			"addCustomCommands":function(commands){
+				commands.push(new GridCmdRowUp(id+":grid:cmd:rowUp",{"showCmdControl":true}));
+				commands.push(new GridCmdRowDown(id+":grid:cmd:rowDown",{"showCmdControl":true}));
+			},
+			"popUpMenu":popup_menu
 		}),
 		"popUpMenu":popup_menu,
 		"rowCommandPanelClass":null,
@@ -82,6 +82,10 @@ ViewGridColParam.prototype.COL_NAME_ID = "name";
 
 
 /* public methods */
+ViewGridColParam.prototype.refresh = function(){
+	this.getElement("grid").onRefresh();
+}
+
 ViewGridColParam.prototype.save = function(){
 	/*
 	var b = this.m_grid.getBody();
@@ -115,6 +119,6 @@ ViewGridColParam.prototype.save = function(){
 
 /*should be overriden*/
 ViewGridColParam.prototype.onAfterSave = function(){	
-	this.getApp().setTemplateParam(this.m_variantStorageName,this.m_paramId,this.m_initVal);
+	window.getApp().setTemplateParam(this.m_variantStorageName,this.m_paramId,this.m_initVal);
 }
 

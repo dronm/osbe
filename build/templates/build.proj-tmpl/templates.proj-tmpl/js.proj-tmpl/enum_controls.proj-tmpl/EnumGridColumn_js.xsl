@@ -25,8 +25,12 @@ function <xsl:value-of select="$enum_id"/>(options){
 	options.multyLangValues = {};
 	<xsl:apply-templates select="value"/>
 	
-	<xsl:value-of select="$enum_id"/>.superclass.constructor.call(this,options);
+	options.ctrlClass = options.ctrlClass || Enum_<xsl:value-of select="@id"/>;
+	options.searchOptions = options.searchOptions || {};
+	options.searchOptions.searchType = options.searchOptions.searchType || "on_match";
+	options.searchOptions.typeChange = (options.searchOptions.typeChange!=undefined)? options.searchOptions.typeChange:false;
 	
+	<xsl:value-of select="$enum_id"/>.superclass.constructor.call(this,options);		
 }
 extend(<xsl:value-of select="$enum_id"/>,GridColumnEnum);
 <![CDATA[]]>

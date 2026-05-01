@@ -3,6 +3,12 @@ require_once(FRAME_WORK_PATH.'basic_classes/Controller.php');
 require_once(FRAME_WORK_PATH.'basic_classes/FilterController.php');
 require_once(FRAME_WORK_PATH.'basic_classes/Model.php');
 require_once(FRAME_WORK_PATH.'basic_classes/ModelVars.php');
+require_once(FRAME_WORK_PATH.'basic_classes/SessionVarManager.php');
+require_once(FRAME_WORK_PATH.'basic_classes/LSNPosition.php');
+
+if(defined('SRV_EVENT_CLASS') && defined('FUNC_PATH')){
+	require_once(FUNC_PATH.SRV_EVENT_CLASS.'.php');
+}
 
 function model_loader($modelId) {
     require_once USER_MODELS_PATH.$modelId.'.php';
@@ -38,19 +44,20 @@ class ControllerDb extends Controller{
 	private $completeModelId;
 	private $objectModelId;
 	
-	public function __construct($dbLinkMaster=NULL,$dbLink=NULL){
+	public function __construct($dbLinkMaster=NULL, $dbLink=NULL){
 		parent::__construct();
 		$this->setDbLinkMaster($dbLinkMaster);
 		$this->setDbLink($dbLink);
 	}
 	public function getDbLink(){
-		return $this->dbLink;
+		//return (isset($this->dbLink))? $this->dbLink:$this->dbLinkMaster;
+		return $this->getReadDbLink();
 	}
 	public function setDbLink($dbLink){
 		$this->dbLink = $dbLink;
 	}
 	public function getDbLinkMaster(){
-		return (isset($this->dbLinkMaster))? $this->dbLinkMaster:$this->dbLink;
+		return $this->dbLinkMaster;
 	}
 	public function setDbLinkMaster($dbLinkMaster){
 		$this->dbLinkMaster = $dbLinkMaster;
@@ -96,7 +103,7 @@ class ControllerDb extends Controller{
 	/*
 		model functions
 	*/	
-	public function modelGetList($model){
+	public function modelGetList($model){		
 		$this->beforeSelect();
 		$this->addModel($model);		
 		$this->afterSelect();	
@@ -198,14 +205,14 @@ class ControllerDb extends Controller{
 	public function addInsertedIdModel($insertedIdAr){
 		$fields = array();
 		foreach($insertedIdAr as $key=>$val){
-			array_push($fields,new Field($key,DT_STRING,array('value'=>$val)));
+			array_push($fields, new Field($key,DT_STRING,array('value'=>$val)));
 		}
 		$this->addModel(new ModelVars(
-			array('id'=>'InsertedId_Model',
-				'values'=>$fields)
+				array('id'=>'InsertedId_Model', 'values'=>$fields)
 			)
 		);
 	}
+	
 	/**
 	 *	Makes insert command on a model defined
 	 *	in insertModelId
@@ -226,11 +233,35 @@ class ControllerDb extends Controller{
 
 			//last inserted id
 			$this->addInsertedIdModel($inserted_id_ar);
-			/*
-			$fields = array();
-			foreach($inserted_id_ar as $key=>$val){
-				array_push($fields,new Field($key,DT_STRING,array('value'=>$val)));
+
+			//add lsn this methos is deprecated
+			$lsn = $this->addLsnModel();
+
+			//event
+			if(defined('SRV_EVENT_CLASS')
+			&& !$pm->getEventsFired()
+			){
+				$events = $pm->getEventIterator();
+				if(!is_null($events)){
+					while($events->valid()) {
+						$event = $events->current();			
+						if(!isset($event['dbTrigger']) || $event['dbTrigger']===FALSE){
+							//trigger event
+							$event_par = $inserted_id_ar;
+							$event_par['emitterId'] = SessionVarManager::getEmitterId();//eventServerClientId
+							$cl = SRV_EVENT_CLASS;
+							if(!is_null($lsn)){
+								$event_par['lsn'] = $lsn;
+							}
+							$cl::publishAsync($events->key(),$event_par);
+						}
+						$events->next();
+					}
+				}
+				$pm->setEventsFired(TRUE);
 			}
+
+			/*
 			$this->addModel(new ModelVars(
 				array('id'=>'InsertedId_Model',
 					'values'=>$fields)
@@ -239,6 +270,10 @@ class ControllerDb extends Controller{
 			*/
 			//depricated			
 			if ($need_id){
+				$fields = array();
+				foreach($inserted_id_ar as $key=>$val){
+					array_push($fields,new Field($key,DT_STRING,array('value'=>$val)));
+				}			
 				//last inserted id
 				$this->addModel(new ModelVars(
 					array('id'=>'LastIds',
@@ -318,6 +353,33 @@ class ControllerDb extends Controller{
 			
 		}
 	}
+	
+	// actually it adds lsn position to the header and returns it
+	// no model is added from 28/03/26.
+	// Client check LSN position based on header, not payload.
+	public function addLsnModel(){
+		/*		
+		$ar = $this->getDbLinkMaster()->query_first("SELECT pg_current_wal_lsn() AS lsn");
+		if(is_array($ar) && count($ar) && isset($ar['lsn'])){
+			$fields = array(new Field('lsn', DT_STRING, array('value' => $ar['lsn'])));
+			$this->addModel(new ModelVars(
+					array('id'=>'MethodResult', 'values'=>$fields)
+				)
+			);
+			return $ar['lsn'];
+		}
+		*/
+		
+		$lsn = LSNPosition::add($this->getDbLinkMaster());
+		$fields = array(new Field('lsn', DT_STRING, array('value' => $lsn)));
+		$this->addModel(new ModelVars(
+				array('id'=>'MethodResult', 'values'=>$fields)
+			)
+		);		
+		return $lsn;
+	}
+	
+	
 	public function update($pm){
 		if (!$this->getStatelessClient()){
 			//STATE client - ajax		
@@ -325,7 +387,45 @@ class ControllerDb extends Controller{
 			if (!isset($model_name)){
 				throw new Exception(self::ER_NO_INSERT_MODEL);
 			}
-			$this->modelUpdate(new $model_name($this->getDbLinkMaster()));	
+			$model = new $model_name($this->getDbLinkMaster());
+			$this->modelUpdate($model);	
+			
+			//add lsn
+			$lsn = $this->addLsnModel();
+			
+			//event
+			if(defined('SRV_EVENT_CLASS')
+			&& !$pm->getEventsFired()
+			){
+				$events = $pm->getEventIterator();
+				if(!is_null($events)){
+					while($events->valid()) {
+						$event = $events->current();			
+						if(!isset($event['dbTrigger']) || $event['dbTrigger']===FALSE){
+							//trigger event
+							$event_par = array('emitterId'=>SessionVarManager::getEmitterId());
+							//keys to params old_
+							$fields = $model->getFieldIterator();
+							while($fields->valid()) {
+								$field = $fields->current();
+								if ($field->getFieldType()==FT_DATA){
+									if(!is_null($v = $field->getOldValue())){
+										$event_par[$field->getId()] = $v;
+									}
+								}
+								$fields->next();
+							}							
+							$cl = SRV_EVENT_CLASS;
+							if(!is_null($lsn)){
+								$event_par['lsn'] = $lsn;
+							}
+							$cl::publishAsync($events->key(), $event_par);
+						}
+						$events->next();
+					}
+				}
+				$pm->setEventsFired(TRUE);
+			}
 		}
 		else{
 			/**
@@ -414,8 +514,46 @@ class ControllerDb extends Controller{
 			if (!isset($model_name)){
 				throw new Exception(ControllerDb::ER_NO_DELETE_MODEL);
 			}
-			$this->modelDelete(
-				new $model_name($this->getDbLinkMaster()));	
+			$model = new $model_name($this->getDbLinkMaster());
+			$this->modelDelete($model);	
+			
+			//add lsn
+			$lsn = $this->addLsnModel();
+			
+			//event
+			if(defined('SRV_EVENT_CLASS')
+			&& !$pm->getEventsFired()
+			){				
+				$events = $pm->getEventIterator();
+				if(!is_null($events)){
+					while($events->valid()) {
+						$event = $events->current();			
+						if(!isset($event['dbTrigger']) || $event['dbTrigger']===FALSE){
+							//trigger event
+							$event_par = array('emitterId'=>SessionVarManager::getEmitterId());
+							//keys to params old_
+							$fields = $model->getFieldIterator();
+							while($fields->valid()){
+								$field = $fields->current();
+								if ($field->getFieldType()==FT_DATA
+								&& !is_null($v=$field->getValue())
+								){
+									$event_par[$field->getId()] = $v;
+								}
+								$fields->next();
+							}
+							$cl = SRV_EVENT_CLASS;
+							if(!is_null($lsn)){
+								$event_par['lsn'] = $lsn;
+							}
+							$cl::publishAsync($events->key(),$event_par);
+							
+						}
+						$events->next();
+					}
+				}
+				$pm->setEventsFired(TRUE);
+			}
 		}
 		else{
 			/**
@@ -452,14 +590,78 @@ class ControllerDb extends Controller{
 		}
 	}
 	
+	//smart data aware server based on lsn (wal log position)
+	public function getReadDbLink(){
+		$data_srv = null;
+
+		$lsn = NULL;
+		if ( isset($_REQUEST['lsn']) ) {
+			$lsn = $_REQUEST['lsn']; //priority, comes from other inserts
+		}
+		if ( is_null($lsn) || !isset($lsn) || $lsn === 'null' ) {
+			$lsn = LSNPosition::getRequestHeader();
+		}
+
+		if (isset($lsn)) {
+			$lsn = trim($lsn);
+		}
+
+		if (isset($lsn) && strlen($lsn) && $lsn !== 'null') {
+			// validate LSN format: HEX/HEX
+			if (!preg_match('/^[0-9A-Fa-f]+\/[0-9A-Fa-f]+$/', $lsn)) {
+				$lsn = null;
+			}
+		}
+//file_put_contents('/home/andrey/www/htdocs/beton_new/output/lsn.txt', date('Y-m-dTH:i:s').' getReadDbLink LSN:'.$lsn.PHP_EOL, FILE_APPEND);
+		if (isset($lsn) && $lsn !== 'null' && $this->dbLink &&
+			($this->dbLink->host != $this->dbLinkMaster->host || $this->dbLink->port != $this->dbLinkMaster->port)
+		) {
+			$tries = 3;
+
+			while ($tries > 0) {
+				$ar = $this->dbLink->query_first(sprintf(
+					"SELECT (
+						coalesce(
+							pg_wal_lsn_diff(pg_last_wal_replay_lsn(), '%s'),
+							-1::numeric
+						) >= 0
+					) AS suits",
+					$lsn
+				));
+//file_put_contents('/home/andrey/www/htdocs/beton_new/output/lsn.txt', date('Y-m-dTH:i:s').' pg_wal_lsn_diff LSN:'.$lsn.PHP_EOL, FILE_APPEND);
+
+				if (!is_array($ar) || !count($ar) || !isset($ar['suits'])) {
+					break;
+				}
+
+				if ($ar['suits'] == 't') {
+					$data_srv = $this->dbLink;
+					break;
+				}
+
+				usleep(100000); // 100 ms
+				$tries--;
+			}
+		}
+		else {
+			// if no lsn requirement then slave is a priority
+			$data_srv = $this->dbLink;
+		}
+
+		if (is_null($data_srv)) {
+			$data_srv = $this->dbLinkMaster;
+		}
+
+		return $data_srv;
+	}
+		
 	public function get_list($pm){
 		$model_name = $this->getListModelId();
 		if (!isset($model_name)){
 			throw new Exception(ControllerDb::ER_NO_LIST_MODEL);
 		}
-		$list_model = new $model_name($this->getDbLink());
+		$list_model = new $model_name($this->getDbLink());//
 		$this->modelGetList($list_model,$pm);
-		
 		/*
 		if (isset($_REQUEST['t'])){
 			$this->addNewModel(sprintf("SELECT
@@ -568,5 +770,6 @@ class ControllerDb extends Controller{
 		$this->modelComplete($model);		
 		$this->addModel($model);
 	}
+	
 }
 ?>

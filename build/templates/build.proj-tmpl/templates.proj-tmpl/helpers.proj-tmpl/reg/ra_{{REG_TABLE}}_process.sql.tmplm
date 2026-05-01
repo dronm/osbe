@@ -1,0 +1,117 @@
+-- Function: ra_{{REG_TABLE}}_process()
+
+-- DROP FUNCTION ra_{{REG_TABLE}}_process();
+
+CREATE OR REPLACE FUNCTION ra_{{REG_TABLE}}_process()
+  RETURNS trigger AS
+$BODY$
+DECLARE
+	--Facts
+	{{#FACTS}}
+	v_delta_{{FIELD_ID}} {{FIELD_SQL_DATA_TYPE}} DEFAULT 0;
+	{{/FACTS}}
+	
+	CALC_DATE_TIME timestamp without time zone;
+	CURRENT_BALANCE_DATE_TIME timestamp without time zone;
+	v_loop_rg_period timestamp without time zone;
+	v_calc_interval interval;			  			
+BEGIN
+	IF (TG_WHEN='BEFORE' AND TG_OP='INSERT') THEN
+		RETURN NEW;
+		
+	ELSIF (TG_WHEN='BEFORE' AND TG_OP='UPDATE') THEN
+		RETURN NEW;
+		
+	ELSIF (TG_WHEN='AFTER' AND (TG_OP='UPDATE' OR TG_OP='INSERT')) THEN
+		CALC_DATE_TIME = rg_calc_period('{{REG_ID}}'::reg_types);
+		IF (CALC_DATE_TIME IS NULL) OR (NEW.date_time::date > rg_period_balance('{{REG_ID}}'::reg_types, CALC_DATE_TIME)) THEN
+			CALC_DATE_TIME = rg_calc_period_start('{{REG_ID}}'::reg_types,NEW.date_time);
+			PERFORM rg_{{REG_TABLE}}_set_custom_period(CALC_DATE_TIME);						
+		END IF;
+
+		IF TG_OP='UPDATE' AND
+		(NEW.date_time<>OLD.date_time
+		{{#DIMENSIONS}}
+		OR NEW.{{FIELD_ID}}<>OLD.{{FIELD_ID}}
+		{{/DIMENSIONS}}
+		) THEN
+			--delete old data completely
+			PERFORM rg_{{REG_TABLE}}_update_periods(
+				OLD.date_time
+				{{#DIMENSIONS}}
+				,OLD.{{FIELD_ID}}
+				{{/DIMENSIONS}}
+				{{#FACTS}}
+				,-1*OLD.{{FIELD_ID}}
+				{{/FACTS}}
+			);
+			{{#FACTS}}
+			v_delta_{{FIELD_ID}} = 0;
+			{{/FACTS}}
+			
+		ELSIF TG_OP='UPDATE' THEN						
+			{{#FACTS}}
+			v_delta_{{FIELD_ID}} = OLD.{{FIELD_ID}};
+			{{/FACTS}}
+		ELSE
+			{{#FACTS}}
+			v_delta_{{FIELD_ID}} = 0;
+			{{/FACTS}}
+		END IF;		
+		{{#FACTS}}
+		v_delta_{{FIELD_ID}} = NEW.{{FIELD_ID}} - v_delta_{{FIELD_ID}};
+		{{/FACTS}}
+		IF NOT NEW.deb THEN
+			{{#FACTS}}
+			v_delta_{{FIELD_ID}} = -1 * v_delta_{{FIELD_ID}};
+			{{/FACTS}}
+		END IF;
+
+		PERFORM rg_{{REG_TABLE}}_update_periods(
+			NEW.date_time
+			{{#DIMENSIONS}}
+			,NEW.{{FIELD_ID}}
+			{{/DIMENSIONS}}
+			{{#FACTS}}
+			,v_delta_{{FIELD_ID}}
+			{{/FACTS}}
+			);		
+		
+		RETURN NEW;					
+		
+	ELSIF (TG_WHEN='BEFORE' AND TG_OP='DELETE') THEN
+		RETURN OLD;
+		
+	ELSIF (TG_WHEN='AFTER' AND TG_OP='DELETE') THEN
+		CALC_DATE_TIME = rg_calc_period('{{REG_ID}}'::reg_types);
+		IF (CALC_DATE_TIME IS NULL) OR (OLD.date_time::date > rg_period_balance('{{REG_ID}}'::reg_types, CALC_DATE_TIME)) THEN
+			CALC_DATE_TIME = rg_calc_period_start('{{REG_ID}}'::reg_types,OLD.date_time);
+			PERFORM rg_{{REG_TABLE}}_set_custom_period(CALC_DATE_TIME);						
+		END IF;
+		{{#FACTS}}
+		v_delta_{{FIELD_ID}} = OLD.{{FIELD_ID}};
+		{{/FACTS}}
+		IF OLD.deb THEN
+			{{#FACTS}}
+			v_delta_{{FIELD_ID}} = -1*v_delta_{{FIELD_ID}};
+			{{/FACTS}}
+		END IF;
+
+		PERFORM rg_{{REG_TABLE}}_update_periods(
+			OLD.date_time
+			{{#DIMENSIONS}}
+			,OLD.{{FIELD_ID}}
+			{{/DIMENSIONS}}
+			{{#FACTS}}
+			,v_delta_{{FIELD_ID}}
+			{{/FACTS}}
+		);
+	
+		RETURN OLD;					
+	END IF;
+END;
+$BODY$
+  LANGUAGE plpgsql VOLATILE
+  COST 100;
+ALTER FUNCTION ra_{{REG_TABLE}}_process() OWNER TO ;
+

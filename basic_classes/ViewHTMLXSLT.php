@@ -111,7 +111,9 @@ class ViewHTMLXSLT extends ViewHTML{
 				ViewHTMLXSLT::DEF_TEMPL_NAME.ViewHTMLXSLT::TEMPL_EXT)){
 				throw new Exception(ViewHTMLXSLT::ER_TEMPL_NOT_FOUND);
 			}
-		}		
+		}
+		
+		/*		
 		//throw new Exception('XSLT='.$xslt_file);
 		//header
 		$xml = '<?xml version="1.0" encoding="UTF-8"?>';
@@ -145,8 +147,49 @@ class ViewHTMLXSLT extends ViewHTML{
 			$xmlDoc->save('page.xml');
 		}
 		echo $xsl->transformToXML($xmlDoc);
-		
+		*/
+		self::printModels($models,$xslt_file);
 	}
+	
+	public static function printModels(ArrayObject &$models,$xsltFile){
+	
+		//header
+		$xml = '<?xml version="1.0" encoding="UTF-8"?>';
+		
+		//root node
+		$xml.= '<document>';
+				
+		//MetaData && Data
+		$modelsIt = $models->getIterator();
+		while($modelsIt->valid()) {
+			$xml.= $modelsIt->current()->metadataToXML();
+			// symbols */ will ruin everything!
+			//$xml.= str_replace('*/','esc*esc/',$modelsIt->current()->dataToXML(TRUE));
+			$xml.= $modelsIt->current()->dataToXML(TRUE);
+			$modelsIt->next();
+		}
+		
+		//end root node
+		$xml.= '</document>';
+		
+		//file_put_contents(OUTPUT_PATH.'doc.xml',$xml);		
+		//XSLTStyler::write($xml,$formName,$roleName);		
+		//echo $xml;
+		//exit;
+		$doc = new DOMDocument();     
+		$xsl = new XSLTProcessor();
+		$doc->load($xsltFile);
+		$xsl->importStyleSheet($doc);
+		//file_put_contents("xml",$xml);
+		$xmlDoc = new DOMDocument();
+		$xmlDoc->loadXML($xml);
+		if (DEBUG){
+			$xmlDoc->formatOutput=TRUE;
+			$xmlDoc->save(OUTPUT_PATH.'page.xml');
+		}		
+		echo $xsl->transformToXML($xmlDoc);
+	}
+	
 }
 
 ?>

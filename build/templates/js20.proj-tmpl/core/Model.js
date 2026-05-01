@@ -8,7 +8,6 @@
  * @param {object} options
  * @param {object} options.fields
  * @param {string|object} options.data
- * @param {bool} [options.primaryKeyIndex=false]
  */
 function Model(id,options){
 	options = options || {};
@@ -17,27 +16,21 @@ function Model(id,options){
 	
 	this.setFields(options.fields);
 	
-	this.m_indexes = {};
 	this.m_sequences = options.sequences || {};
-	
-	if (options.primaryKeyIndex){
-		this.addPrimaryKeyIndex();
-	}
 	
 	this.setMarkOnDelete((options.markOnDelete!=undefined)? options.markOnDelete:false);
 	
 	this.setData(options.data);
+	this.setCalcHash(options.calcHash);
 }
 
 /* private members */
-Model.prototype.m_rowIndex;
 Model.prototype.m_fields;
 Model.prototype.m_id;
 Model.prototype.m_locked;
-Model.prototype.m_indexes;
 Model.prototype.m_sequences;
 Model.prototype.m_currentRow;
-
+Model.prototype.m_rowIndex;
 Model.prototype.m_markOnDelete;
 
 /**
@@ -47,7 +40,6 @@ Model.prototype.m_markOnDelete;
  * @param {bool} mark Only mark row as deleted
  */
 Model.prototype.deleteRow = function(row,mark){
-	//Deleye from Index?
 }
 
 /**
@@ -78,11 +70,18 @@ Model.prototype.updateRow = function(row){
  * @protected
  */
 Model.prototype.resetFields = function(){
-	if (!this.m_fields){
-		throw new Error(CommonHelper.format(this.ER_NO_FIELDS,[this.getId()]));
-	}
-	for (var id in this.m_fields){
-		this.m_fields[id].unsetValue();
+	if (this.m_fields){
+		//throw new Error(CommonHelper.format(this.ER_NO_FIELDS,[this.getId()]));
+		for (var id in this.m_fields){
+			if(this.m_fields[id].unsetValue){
+				this.m_fields[id].unsetValue();
+			/*}else{
+				console.log(this.m_id)
+				console.log(id)
+				console.log(this.m_fields[id])
+			*/	
+			}			
+		}
 	}
 }
 
@@ -101,8 +100,6 @@ Model.prototype.copyRow = function(row){
  */
 Model.prototype.setData = function(data){
 	this.reset();
-	
-	//this.reindex();
 }
 
 
@@ -162,7 +159,7 @@ Model.prototype.getRow = function(ind){
 }
 
 /**
- * Retrieves current row, with index = this.m_rowIndex 
+ * Retrieves current row with index = this.m_rowIndex 
  * @public
  * @returns {bool}  
  */
@@ -221,7 +218,6 @@ Model.prototype.getFields = function(){
  * @returns {int}
  */
 Model.prototype.getRowIndex = function(){
-
 	return this.m_rowIndex;
 }
 
@@ -245,33 +241,13 @@ Model.prototype.fieldExists = function(id){
 }
 
 /**
- * @param {string} keyIdsHash search field identifiers hash
- * @param {string} valHash search string hash
- * @raturns {Array}
- */
-Model.prototype.locate = function(keyIdsHash,valHash){
-	var res;
-	for (var idx in this.m_indexes){
-		if (this.m_indexes[idx].fieldHash==keyIdsHash){
-			//get index
-			res = this.m_indexes[idx].hashes[valHash];
-			
-			break;
-		}
-		
-	}	
-		
-	return res;
-}
-
-/**
  * @public
  * @returns {Field}
  * @param {string} id Field id
  */
 Model.prototype.getField = function(id){
 	if (!this.m_fields){
-		throw new Error(CommonHelper.format(this.ER_NO_FIELDS,[id]));
+		throw new Error(CommonHelper.format(this.ER_NO_FIELDS,[this.getId()]));
 	}
 
 	if (!this.m_fields[id]){
@@ -289,11 +265,8 @@ Model.prototype.setFields = function(v){
 		this.m_fields = {};
 		for (var i=0;i<v.length;i++){
 			if (typeof(v[i])=="object"){
-				//this.m_fields[v[i].getId()] = v[i];
 				this.addField(v[i]);
-			}
-			else{
-				//this.m_fields[v[i]] = new FieldString(v[i]);
+			}else{
 				var f = new FieldString(v[i]);
 				this.addField(f);
 			}
@@ -352,11 +325,8 @@ Model.prototype.reset = function(){
  */
 Model.prototype.recDelete = function(keyFields,mark){
 	mark = (mark!=undefined)? mark:this.getMarkOnDelete();
-	var row = this.recLocate(keyFields);
-	if (!row || !row.length){
-		throw Error(this.ER_REС_NOT_FOUND);
-	}	
-	this.deleteRow(row[0],mark);
+	var row = this.recLocate(keyFields,true);
+	this.deleteRow(this.m_currentRow,mark);
 }
 
 /**
@@ -364,12 +334,9 @@ Model.prototype.recDelete = function(keyFields,mark){
  * @param {Object} keyFields
  */
 Model.prototype.recUndelete = function(keyFields){
-	var row = this.recLocate(keyFields);
-	if (!row || !row.length){
-		throw Error(this.ER_REС_NOT_FOUND);
-	}	
-	this.undeleteRow(row[0]);
-	//Make Current And Reindex
+	var row = this.recLocate(keyFields,true);
+	this.undeleteRow(this.m_currentRow);
+	//Make Current
 }
 
 /**
@@ -386,36 +353,85 @@ Model.prototype.recInsert = function(){
 	this.m_currentRow = this.makeRow();
 	this.addRow(this.m_currentRow);
 	this.m_rowIndex = this.getRowCount()-1;
-	this.reindexAllCurrentRow();		
 }
 
 /**
  * @public
- * @param {Object} keyFields
+ * updates current row
  */
-Model.prototype.recUpdate = function(keyFields){
-	var row = this.recLocate(keyFields);
-	if (!row || !row.length){
-		throw Error(this.ER_REС_NOT_FOUND);
-	}
-	this.updateRow(row[0]);			
+Model.prototype.recUpdate = function(){	
+	this.updateRow(this.m_currentRow);			
 }
 
 /**
  * @public
  * @param {Object} keyFields id=value of Field
- * @returns {Array}
+ * @param {bool} unique
+ * @returns {Array} array of row indexes
  */
-Model.prototype.recLocate = function(keyFields){
-	var val = "";
-	var ids_hash = "";
-	for (var fi in keyFields){
-		if (keyFields[fi].isSet() && this.m_fields[fi]){
-			val+= keyFields[fi].getValue();
-			ids_hash+= fi;
+Model.prototype.locate = function(keyFields,unique){
+	var res;
+	/*if(this.getLocked()){
+		throw new Error(this.ER_LOCKED);
+	}*/
+	this.setLocked(true);
+	var cur_ind = this.getRowIndex();
+	try{
+		this.reset();
+		var row_i = 0;
+		while(this.getNextRow()){			
+			var key_found = true;
+			for(var fid in keyFields){
+				if(this.fieldExists(fid)){
+					var dt = keyFields[fid].getDataType? keyFields[fid].getDataType() : Field.prototype.DT_STRING;
+					var is_date = (dt==keyFields[fid].DT_DATETIME||dt==keyFields[fid].DT_DATE||dt==keyFields[fid].DT_DATETIMETZ);
+					
+					var m_v = this.getFieldValue(fid);
+					var k_v = keyFields[fid].getValue? keyFields[fid].getValue() : keyFields[fid];
+					if(
+					(!is_date&&m_v!=k_v)
+					||(is_date&&m_v.getTime()!=k_v.getTime())
+					){
+						key_found = false;
+						break;
+					}
+				}
+			}
+			if(key_found){
+				if(!res){
+					res = [];
+				}
+				res.push(row_i);
+				if(unique){
+					break;
+				}
+			}
+			row_i++;			
 		}
 	}
-	return this.locate(CommonHelper.md5(ids_hash),CommonHelper.md5(val));
+	finally{
+		this.setLocked(false);
+	}
+	this.setRowIndex(cur_ind);
+	return res;
+}
+
+/**
+ * @public
+ * Moves record set to first found row
+ * @param {Object} keyFields id=value of Field
+ * @param {bool} unique
+ * @returns {Array}
+ */
+Model.prototype.recLocate = function(keyFields,unique){
+	var res = this.locate(keyFields,unique);
+	if (!res && unique){
+		throw Error(this.ER_REС_NOT_FOUND);
+	}	
+	else if(res){
+		this.getRow(res[0]);
+	}
+	return res;
 }
 
 
@@ -473,6 +489,7 @@ Model.prototype.getId = function(){
  * @public 
  */
 Model.prototype.clear = function(){
+	this.reset();
 }
 
 /**
@@ -498,84 +515,55 @@ Model.prototype.recMoveDown = function(ind){
 	this.recMove(ind,1);
 }
 
-//******** INDEX ***********************
-
-/**
- * @protected
- * @param {string} idx Index id
- */
-Model.prototype.reindexCurrentRow = function(idx){
-	var val = "";
-	for (var idx_f_i=0;idx_f_i<this.m_indexes[idx].fields.length;idx_f_i++){				
-		val+= this.m_fields[this.m_indexes[idx].fields[idx_f_i]].getValue();
-	}
-	var h = CommonHelper.md5(val);
-	if (!this.m_indexes[idx].hashes[h]){
-		this.m_indexes[idx].hashes[h] = [];
-	}
-	this.m_indexes[idx].hashes[h].push(this.m_currentRow);// this.getRows(true)[this.m_rowIndex]
-}
-/**
- * @protected
- */
-Model.prototype.reindexAllCurrentRow = function(){
-	for (var i in this.m_indexes){
-		this.reindexCurrentRow(i);
-	}		
-}
 /**
  * @public
- * @param {string} specIdx Index id or null
+ * @returns {bool}  
  */
-Model.prototype.reindex = function(specIdx){
-	if (CommonHelper.isEmpty(this.m_indexes)) return;
-	//console.log("Model.prototype.reindex")
-	this.m_rowIndex = -1;
-	while (this.getNextRow()){
-		if (specIdx){
-			this.reindexCurrentRow(specIdx);
-		}
-		else{
-			this.reindexAllCurrentRow();
-		}
-	}
-	this.m_rowIndex = -1;
+Model.prototype.getCalcHash = function(){
+	return this.m_calcHash;
 }
 
 /**
  * @public
- * @param {string} id Index identifier
- * @param {Array} fields Field identifiers
+ * @param {bool} v
  */
-Model.prototype.addIndex = function(id,fields){
-	if (this.m_fields){
-		this.m_indexes[id] = {};
-		this.m_indexes[id].fields = fields;
-		this.m_indexes[id].fieldHash = "";
-		this.m_indexes[id].hashes = {};
+Model.prototype.setCalcHash = function(v){
+	this.m_calcHash = v;
+}
 
-		var f_ids = "";
-		for (var fi in this.m_fields){
-			if (fields.indexOf(fi)>=0){
-				f_ids+= fi;
+/**
+ * Stub
+ * @public 
+ */
+Model.prototype.appendModelData = function(targetModel){
+}
+
+/**
+ * Stub
+ * @public 
+ */
+Model.prototype.insertModelData = function(targetModel){
+}
+/*
+needs formatting, should be in GUI (grid)
+Model.prototype.getFormattedValue = function(){
+	var ind = this.getRowIndex();
+	try{
+		var descr = "", f_descr,fields;
+		this.reset();
+		while(this.getNextRow()){		
+			f_descr = "";
+			fields = this.getFields();
+			for(var id in fields){
+				f_descr += ((f_descr=="")? "" : ", "+fields[id].getValue());
 			}
+			descr += ((descr=="")? "" : String.fromCharCode(10));
+			descr += f_descr;
 		}
-		this.m_indexes[id].fieldHash = CommonHelper.md5(f_ids);
-	}	
-}
-
-/**
- * @public
- */
-Model.prototype.addPrimaryKeyIndex = function(){
-	if (this.m_fields){
-		var fields = [];
-		for (var id in this.m_fields){
-			if (this.m_fields[id].getPrimaryKey()){
-				fields.push(id);
-			}
-		}
-		this.addIndex("primaryKey",fields);
+		
+	}finally{
+		this.setRowIndex(ind);
 	}
+	return descr;
 }
-
+*/

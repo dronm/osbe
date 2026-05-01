@@ -1,12 +1,11 @@
--- VIEW: views_section_list
+-- View: public.views_section_list
 
---DROP VIEW views_section_list;
+-- DROP VIEW public.views_section_list;
 
-CREATE OR REPLACE VIEW views_section_list AS
-	SELECT
-		DISTINCT section
-	FROM views
-	ORDER BY section
-	;
-	
-ALTER VIEW views_section_list OWNER TO ;
+CREATE OR REPLACE VIEW public.views_section_list AS 
+ SELECT DISTINCT views.section
+   FROM views
+  ORDER BY views.section;
+
+ALTER TABLE public.views_section_list OWNER TO ;
+

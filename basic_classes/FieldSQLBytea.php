@@ -28,8 +28,9 @@ class FieldSQLBytea extends FieldSQL{
 	}
 	
 	public static function formatForDb($dbLink,$valIn,&$valOut){
-		$valOut = (!isset($valIn) || !strlen($valIn) || $valIn=='null')? 'null':pg_escape_bytea($dbLink->link_id,$valIn);
-	//
+		$valOut = (!isset($valIn) || !strlen($valIn) || $valIn=='null')? 'null':"'".pg_escape_bytea($valIn)."'";				
+		//$valOut = (!isset($valIn) || !strlen($valIn) || strtolower($valIn)=='null')? 'NULL':"E'\\\\x".bin2hex($valIn)."'";
+		//throw new Exception($valOut);
 	}	
 	
 }

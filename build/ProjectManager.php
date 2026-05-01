@@ -23,7 +23,8 @@ class ProjectManager extends Manager{
 	const VERS_FILE_NAME = 'version.php';
 	const CONFIG_FILE_NAME = 'Config.php';
 	const README_FILE_NAME = 'README.md';
-	const INIT_DB_FILE_NAME = 'init_db_sql';
+	
+	const INIT_DB_SU_FILE_NAME = 'init_db_superuser.sql';
 			
 	const CONTROLLERS_DIR = 'controllers';
 	const MODELS_DIR = 'models';
@@ -37,6 +38,7 @@ class ProjectManager extends Manager{
 	
 	const UPDATES_DIR = 'updates';
 	const JS_ENUM_DIR = 'enum_controls';
+	const JS_CUSTOM_DIR = 'custom_controls';
 	
 	const APP_JS_TMPL = 'App.templates.js';
 	
@@ -57,6 +59,7 @@ class ProjectManager extends Manager{
 	
 	const MODEL_PHP_TEMPL = 'Model_php.tmpl';
 	const MODEL_JS_TEMPL = 'Model_js.tmpl';
+	const MODEL_SQL_TEMPL = 'Model_sql.xsl';
 	const MODEL_PHP_NAME_TEMPL = '%s_Model_php.xsl';
 	const MODEL_JS_NAME_TEMPL = '%s_Model_js.xsl';
 	
@@ -65,6 +68,9 @@ class ProjectManager extends Manager{
 
 	const PERM_PHP_TEMPL = 'permission_php.tmpl';
 	const PERM_PHP_NAME_TEMPL = 'permission_%s_php.xsl';
+	
+	const PRED_IT_APP_JS_TEMPL = 'App.predefinedItems_js.xsl';
+	const ENUM_APP_JS_TEMPL = 'App.enums_js.xsl';
 	
 	const ENUM_JS_TEMPL = 'Enum_js.tmpl';
 	const ENUM_JS_XSL = 'Enum_js.xsl';
@@ -108,7 +114,7 @@ class ProjectManager extends Manager{
 			$command = str_replace('#templFile',$templFile,$command);
 			//$command = sprintf('xalan -out %s -in %s -xsl %s',$outFile,$inFile,$templFile);
 		
-			$log->add('XSLT transformation with external processor'.$command,'note');
+			$log->add('XSLT transformation with external processor'.$command,'debug');
 		
 			//echo $command.'</br></br>';
 			$this->run_shell_cmd($command);
@@ -116,12 +122,13 @@ class ProjectManager extends Manager{
 			$this->set_file_permission($outFile);	
 		}
 		else{
-			$log->add('XSLT transformation with built-in processor','note');
+			$log->add('XSLT transformation with built-in processor:'.$templFile.' => '.$outFile,'debug');
 			
 			//standart XSLTProcessor
 			$xml = new DOMDocument;
 			$xml->load($inFile);
-			
+//echo 'templFile='.$templFile.'</br>';
+//echo debug_print_backtrace().'</br>';
 			$xsl = new DOMDocument;
 			$xsl->load($templFile);
 			
@@ -173,6 +180,29 @@ class ProjectManager extends Manager{
 		}
 		$log->add('Document successfully validated with DTD','note');	
 	}
+
+	/**
+	 * Building activity log sql script.
+	 * @public
+	 * @param {Logger} log - reference to a Logger object
+	*/
+	public function activityLog($log){		
+		$doc_templ = $this->projectDir.DIRECTORY_SEPARATOR. self::BUILD_DIR.DIRECTORY_SEPARATOR. self::TEMPL_DIR.DIRECTORY_SEPARATOR. 'build'.self::TEPL_FILE_EXT.DIRECTORY_SEPARATOR. self::DB_DIR.self::TEPL_FILE_EXT.DIRECTORY_SEPARATOR.'activityLog.xsl';
+		echo 'ACTLOG='.$doc_templ.'</br>';
+		$out_f = $this->projectDir.DIRECTORY_SEPARATOR. self::BUILD_DIR. self::SQL_DIR.DIRECTORY_SEPARATOR. 'activity_log.sql';
+		if (file_exists($doc_templ)){
+			$this->transform(
+				$this->getMdFile(),
+				$doc_templ,
+				$out_f,
+				$log
+			);		
+			$log->add('Activity log sql script created.','note');	
+	
+		}		
+	
+		
+	}
 	
 
 	public function createVersionFile($versNum,$log){
@@ -203,14 +233,35 @@ class ProjectManager extends Manager{
 		$js_res = '';
 		$cnt = 0;
 		foreach($xml->jsScripts->jsScript as $js_script){
-			$file = $this->projectDir.DIRECTORY_SEPARATOR. $this->getJsDirectory().DIRECTORY_SEPARATOR. $js_script->attributes()->file;
+			$file_name = $js_script->attributes()->file;
+			if(substr($file_name, 0, 2) == "js"){
+				//js dir is inside
+				$file = $this->projectDir.DIRECTORY_SEPARATOR. $file_name;	
+			}else{
+				$file = $this->projectDir.DIRECTORY_SEPARATOR. $this->getJsDirectory().DIRECTORY_SEPARATOR. $file_name;
+			}
+			
 			if (!file_exists($file)){
 				throw new Exception('File not found: '.$file);
 			}
 			
-			$js_res.=($js_res=='')? '':' ';			
-			$text = $this->convToUtf8(file_get_contents($file));
+			$js_res.=($js_res=='')? '':' ';						
 			if (!isset($js_script->attributes()->standalone) || $js_script->attributes()->standalone=='FALSE'){
+				$text = $this->convToUtf8(file_get_contents($file));
+				
+				//remove 'import {} from ""' lines
+				while(1==1) {
+					$p = mb_strpos($text, "import {", 0);
+					if($p === FALSE){
+						break;
+					}
+					$p2 = mb_strpos($text, "\n", $p);
+					if($p2 === FALSE){
+						break;
+					}
+					$text = mb_substr($text, 0, $p).mb_substr($text, $p2+1);
+				}
+				
 				//compress OR include as is
 				$cnt++;
 				if (!isset($js_script->attributes()->compressed) || $js_script->attributes()->compressed=='FALSE'){
@@ -247,7 +298,11 @@ class ProjectManager extends Manager{
 				$file = ABSOLUTE_PATH.'css/'.$script->attributes()->file;
 			}
 			else{
-				$file = $this->projectDir.DIRECTORY_SEPARATOR. $this->getJsDirectory().DIRECTORY_SEPARATOR. $script->attributes()->file;
+				if(substr($script->attributes()->file, 0, 2) == "js"){
+					$file = $this->projectDir.DIRECTORY_SEPARATOR. $script->attributes()->file;
+				}else{
+					$file = $this->projectDir.DIRECTORY_SEPARATOR. $this->getJsDirectory().DIRECTORY_SEPARATOR. $script->attributes()->file;
+				}
 			}
 			
 			if (!file_exists($file)){
@@ -380,6 +435,8 @@ class ProjectManager extends Manager{
 					$ext = self::TEPLM_FILE_EXT;
 				}
 				$new_filename = substr($filename,0,strlen($filename)-strlen($ext));
+				//file name ethrough mustache
+				$new_filename = $m->render($new_filename,$templParams);
 		    		
 			    	if (is_dir($sourceDir.DIRECTORY_SEPARATOR. $filename)){
 			    		if (!file_exists($destDir.DIRECTORY_SEPARATOR. $new_filename)){
@@ -413,6 +470,25 @@ class ProjectManager extends Manager{
 		$log->add('Symbolic links are created.','warn');
 	}
 	
+	private static function addJsToMD($script, &$xml, &$jsScriptsToAdd){
+		//echo "adding script:".$script."</br>";
+		if(substr($script,0,3)==="js/"){
+			$script = substr($script,3);
+		}
+		if ($xml->xpath( sprintf("/metadata/jsScripts/jsScript[@file='%s']", $script) )==FALSE){
+			array_push($jsScriptsToAdd, $script);
+		}									
+	}
+	
+	private static function check_php_file_syntax($fileName){
+		$output = "";
+		$returnVar = NULL;
+		exec('php -l '.$fileName.' 2>&1', $output, $returnVar);
+		if ($returnVar !== 0) {
+			throw new Exception("file:".$fileName." syntax error detected:".implode("\n", $output));
+		}
+	}		
+		
 	public function build($log){
 	
 		$md_file = $this->getMdFile();
@@ -458,9 +534,13 @@ class ProjectManager extends Manager{
 		//********************** CONTROLLERS ***************************
 		$proj_contr_templ_dir = $proj_templates_dir.DIRECTORY_SEPARATOR. self::CONTROLLERS_DIR;		
 				
-		$contr_list = $xml->controllers->controller;
+		//$contr_list = $xml->controllers->controller;
+		$contr_list = $xml->xpath("/metadata/controllers/controller[@cmd='alt' or @cmd='add' or @cmd='del']");
 		foreach($contr_list as $contr){
 			$id = $contr->attributes()->id;
+			//if (!isset($contr->attributes()->cmd) || ($contr->attributes()->cmd != "add" && $contr->attributes()->cmd != "alt") ) {
+			//	continue;
+			//}
 			$contr_server = (!$contr->attributes()->server || $contr->attributes()->server=='TRUE');
 			$contr_client = (!$contr->attributes()->client || $contr->attributes()->client=='TRUE');
 		
@@ -491,7 +571,8 @@ class ProjectManager extends Manager{
 						$contr_file,
 						$proj_user_contr_dir.DIRECTORY_SEPARATOR. php_script_name($contr_name),
 						$log
-					);		
+					);
+					self::check_php_file_syntax($proj_user_contr_dir.DIRECTORY_SEPARATOR. php_script_name($contr_name));	
 				}
 			}
 					
@@ -499,7 +580,8 @@ class ProjectManager extends Manager{
 				$proj_user_contr_dir = $this->projectDir.DIRECTORY_SEPARATOR. $this->getJsDirectory().DIRECTORY_SEPARATOR. self::CONTROLLERS_DIR; 
 				//JS controller
 				$templ_file = $proj_contr_templ_dir.DIRECTORY_SEPARATOR.self::CONTROLLER_JS_TEMPL;
-				$contr_name = sprintf(self::CONTROLLER_JS_NAME_TEMPL,$id);
+				$contr_name = sprintf(self::CONTROLLER_JS_NAME_TEMPL, $id);
+//throw new Exception('contr_name '.$contr_name);				
 				if (!file_exists($contr_file = $proj_contr_templ_dir.DIRECTORY_SEPARATOR.$contr_name)){
 					//no js controller template
 					if (!file_exists($templ_file)){
@@ -511,7 +593,6 @@ class ProjectManager extends Manager{
 						sprintf(file_get_contents($templ_file),$id)
 					);
 				}
-
 				if (filemtime($contr_file)>$last_build_dt
 				||$md_modif
 				||!file_exists($proj_user_contr_dir.DIRECTORY_SEPARATOR. js_script_name($contr_name))
@@ -521,24 +602,34 @@ class ProjectManager extends Manager{
 		
 					$this->transform($md_file,
 						$contr_file,
-						$proj_user_contr_dir.DIRECTORY_SEPARATOR.js_script_name($contr_name),
+						$proj_user_contr_dir.DIRECTORY_SEPARATOR. js_script_name($contr_name),
 						$log
 					);		
 				}		
 				//проверка в md _Controller.js
+				self::addJsToMD($this->getJsDirectory().DIRECTORY_SEPARATOR."controllers/{$id}_Controller.js", $xml, $js_scripts_to_add);
+				//throw new Exception($this->getJsDirectory().DIRECTORY_SEPARATOR."controllers/{$id}_Controller.js");
+				/*
 				if ($xml->xpath("/metadata/jsScripts/jsScript[@file='controllers/{$id}_Controller.js']")==FALSE){
 					array_push($js_scripts_to_add,"controllers/{$id}_Controller.js");
-				}		
+				}
+				*/		
 			}		
 		}
 		//********************** CONTROLLERS ***************************
 	
-		//********************** models *************************
+		//********************** models *************************		
+		$pred_it_mod = FALSE;
+		$pred_it_out = $this->projectDir.DIRECTORY_SEPARATOR. $this->getJsDirectory().DIRECTORY_SEPARATOR. self::JS_CUSTOM_DIR.DIRECTORY_SEPARATOR.js_script_name(self::PRED_IT_APP_JS_TEMPL);
+		$pred_it_out_exists = file_exists($pred_it_out);
+		
 		$proj_models_templ_dir = $proj_templates_dir.DIRECTORY_SEPARATOR. self::MODELS_DIR;				
-		$model_list = $xml->models->model;
+		//$model_list = $xml->models->model;
+		$model_list = $xml->xpath("/metadata/models/model[@cmd='alt' or @cmd='add' or @cmd='del']");
 		foreach($model_list as $model){
 			$id = $model->attributes()->id;
-		
+			$is_client_model = ($model->attributes()->server=="FALSE");
+	
 			//model file PHP
 			$proj_user_model_dir = $this->projectDir.DIRECTORY_SEPARATOR. self::MODELS_DIR; 
 			$templ_file = $proj_models_templ_dir.DIRECTORY_SEPARATOR. self::MODEL_PHP_TEMPL;
@@ -554,19 +645,21 @@ class ProjectManager extends Manager{
 					sprintf(file_get_contents($templ_file),$id)
 				);
 			}
-			if (filemtime($model_file)>$last_build_dt
+			
+			if (!$is_client_model &&
+			(filemtime($model_file)>$last_build_dt
 			||$md_modif
 			||!file_exists($proj_user_model_dir.DIRECTORY_SEPARATOR.php_script_name($model_name))
-			||filemtime($proj_models_templ_dir.'/Model_php.xsl')>$last_build_dt){
+			||filemtime($proj_models_templ_dir.'/Model_php.xsl')>$last_build_dt)
+			){
 				$md_modif = TRUE;
-			
 				$this->transform($md_file,
 					$model_file,
 					$proj_user_model_dir.DIRECTORY_SEPARATOR.php_script_name($model_name),
 					$log
 				);
+				self::check_php_file_syntax($proj_user_model_dir.DIRECTORY_SEPARATOR. php_script_name($model_name));
 			}
-			
 			//model file JS
 			if (file_exists($templ_file = $proj_models_templ_dir.DIRECTORY_SEPARATOR. self::MODEL_JS_TEMPL) ){
 				$proj_user_model_dir = $this->projectDir.DIRECTORY_SEPARATOR. $this->getJsDirectory().DIRECTORY_SEPARATOR. self::MODELS_DIR; 
@@ -592,18 +685,89 @@ class ProjectManager extends Manager{
 					);
 				}
 				//check in md _Model.js
+				$js_dir = $this->getJsDirectory();
+				self::addJsToMD($js_dir.DIRECTORY_SEPARATOR."models/{$id}_Model.js", $xml, $js_scripts_to_add);
+				/*
 				if ($xml->xpath("/metadata/jsScripts/jsScript[@file='models/{$id}_Model.js']")==FALSE){
 					array_push($js_scripts_to_add,"models/{$id}_Model.js");
-				}		
+				}
+				*/		
 			}
 			
+			//sql script
+			if (
+			($model->attributes()->cmd=="add" || $model->attributes()->cmd=="alt")
+			&& $model->attributes()->virtual=="TRUE"
+			&& isset($model->attributes()->dataTable)
+			&& file_exists($templ_file = $proj_models_templ_dir.DIRECTORY_SEPARATOR. self::MODEL_SQL_TEMPL)
+			){
+				$proj_build_dir = $this->projectDir.DIRECTORY_SEPARATOR. self::BUILD_DIR;
+				$sql_name = $model->attributes()->dataTable.'.sql';
+				if(!file_exists($sql_fl = $proj_build_dir.DIRECTORY_SEPARATOR. self::SQL_DIR.DIRECTORY_SEPARATOR.$sql_name)){
+					$log->add('Creating new sql script on vitrual table '.$sql_name,'note');
+					
+					//temporary template
+					$tempor_tmpl = OUTPUT_PATH.uniqid();
+					try{
+						file_put_contents(
+							$tempor_tmpl,
+							str_replace('{{MODEL_ID}}',$model->attributes()->id,file_get_contents($templ_file))
+						);
+					
+						$this->transform($md_file,
+							$tempor_tmpl,
+							$sql_fl,
+							$log
+						);
+					}
+					finally{
+						unlink($tempor_tmpl);
+					}
+					
+				}
+				//$proj_sql_dir = $this->projectDir.DIRECTORY_SEPARATOR. $this->getJsDirectory().DIRECTORY_SEPARATOR. self::MODELS_DIR; 
+			}
+			
+			//predefined items
+			if ($pred_it_out_exists && (!$pred_it_mod && $model->predefinedItems) ){
+				foreach($model->predefinedItems->predefinedItem as $item){
+					if ($item->attributes()->cmd){
+						$pred_it_mod = TRUE;
+						break;	
+					}
+				}				
+			}
 		}
 		//********************** models *************************
 
+		
+		//********************** predefined items ****************		
+		//echo 'pred_it_out_exists='.($proj_templates_dir.DIRECTORY_SEPARATOR. 'js'.DIRECTORY_SEPARATOR. self::JS_CUSTOM_DIR.DIRECTORY_SEPARATOR. self::PRED_IT_APP_JS_TEMPL).'</BR>'.'</BR>'.'</BR>';
+		if ( (!$pred_it_out_exists || $pred_it_mod)
+		&&file_exists($templ_file = $proj_templates_dir.DIRECTORY_SEPARATOR. 'js'.DIRECTORY_SEPARATOR. self::JS_CUSTOM_DIR.DIRECTORY_SEPARATOR. self::PRED_IT_APP_JS_TEMPL)
+		){
+			$log->add('Creating App.predefinedItems.js','debug');
+			$this->transform($md_file,
+				$templ_file,
+				$pred_it_out,
+				$log
+			);
+			//проверка в md custom_controls/App.predefinedItems.js
+			self::addJsToMD($this->getJsDirectory().DIRECTORY_SEPARATOR.self::JS_CUSTOM_DIR.DIRECTORY_SEPARATOR.js_script_name(self::PRED_IT_APP_JS_TEMPL), $xml,$js_scripts_to_add);
+			/*
+			if ($xml->xpath("/metadata/jsScripts/jsScript[@file='".$jsscript."']")==FALSE){
+				array_push($js_scripts_to_add,$jsscript);
+			}
+			*/											
+		}
+		//********************** predefined items ****************
+
+
 		//***************************** SERVER TEMPLATES ********************
 		$proj_tmpl_templ_dir = $proj_templates_dir.DIRECTORY_SEPARATOR. self::TMPL_DIR;		
-		$templ_list = $xml->serverTemplates->serverTemplate;
-		if ($templ_list){
+		//$templ_list = $xml->serverTemplates->serverTemplate;
+		$templ_list = $xml->xpath("/metadata/serverTemplates/serverTemplate[@cmd='alt' or @cmd='add' or @cmd='del']");
+		if(isset($templ_list) && is_array($templ_list) && count($templ_list)){			
 			foreach($templ_list as $templ){
 				$id = $templ->attributes()->id;
 		
@@ -665,7 +829,8 @@ class ProjectManager extends Manager{
 					$model_file,
 					$proj_user_model_dir.DIRECTORY_SEPARATOR. php_script_name($model_name),
 					$log
-				);				
+				);
+				self::check_php_file_syntax($proj_user_model_dir.DIRECTORY_SEPARATOR. php_script_name($model_name));				
 			}
 		}
 		//*********** menu ********************************
@@ -675,92 +840,202 @@ class ProjectManager extends Manager{
 		if ($js_exists){
 			$proj_custom_templ_dir = $proj_templates_dir.DIRECTORY_SEPARATOR. 'js'.DIRECTORY_SEPARATOR. self::JS_ENUM_DIR; 
 			
+			$rebuild_app_enums = FALSE;
+			$proj_custom_user_dir = $this->projectDir.DIRECTORY_SEPARATOR. $this->getJsDirectory().DIRECTORY_SEPARATOR. self::JS_ENUM_DIR; 
+			//$enum_list = $xml->enums->enum;
+			$enum_list = $xml->xpath("/metadata/enums/enum[@cmd='alt' or @cmd='add' or @cmd='del']");
+			foreach($enum_list as $enum){
+				$id = $enum->attributes()->id;
+				$enum_name = sprintf(self::ENUM_JS_NAME_TEMPL,$id);
+				
+				if (!$rebuild_app_enums && $enum->attributes()->cmd){
+					$rebuild_app_enums = TRUE;
+				}
+				
+				//enum template
+				if (file_exists($templ_file = $proj_custom_templ_dir.DIRECTORY_SEPARATOR. self::ENUM_JS_TEMPL) ){
+					if (!file_exists($enum_file = $proj_custom_templ_dir.DIRECTORY_SEPARATOR. $enum_name)){
+						$log->add('Creating new enum template '.$id,'note');
+						$this->str_to_file($enum_file,
+							sprintf(file_get_contents($templ_file),$id)
+						);
+					}
+			
+					if (filemtime($enum_file)>$last_build_dt || $md_modif
+					|| !file_exists($proj_custom_user_dir.DIRECTORY_SEPARATOR. js_script_name($enum_name))){
+						$md_modif = TRUE;
+
+						$this->transform($md_file,
+							$enum_file,
+							$proj_custom_user_dir.DIRECTORY_SEPARATOR. js_script_name($enum_name),
+							$log
+						);
+						//проверка в md _Model.js
+						self::addJsToMD($this->getJsDirectory().DIRECTORY_SEPARATOR.self::JS_ENUM_DIR.DIRECTORY_SEPARATOR.js_script_name($enum_name),$xml,$js_scripts_to_add);
+						/*
+						$jsscript = self::JS_ENUM_DIR.DIRECTORY_SEPARATOR. js_script_name($enum_name);
+						if ($xml->xpath("/metadata/jsScripts/jsScript[@file='".$jsscript."']")==FALSE){
+							array_push($js_scripts_to_add,$jsscript);
+						}
+						*/									
+					}
+				}
+				
+				//enum grid template
+				$enum_name = sprintf(self::ENUM_GRID_COL_JS_NAME_TEMPL,$id);				
+				if (file_exists($templ_file = $proj_custom_templ_dir.DIRECTORY_SEPARATOR. self::ENUM_GRID_COL_JS_TEMPL) ){
+					if (!file_exists($enum_file = $proj_custom_templ_dir.DIRECTORY_SEPARATOR. $enum_name)){
+						$log->add('Creating new enum gridColumn template '.$id,'note');
+						$this->str_to_file($enum_file,
+							sprintf(file_get_contents($templ_file),$id)
+						);
+					}
+				
+					if (filemtime($enum_file)>$last_build_dt || $md_modif
+					|| !file_exists($proj_custom_user_dir.DIRECTORY_SEPARATOR. js_script_name($enum_name))){
+						$md_modif = TRUE;
+	
+						$this->transform($md_file,
+							$enum_file,
+							$proj_custom_user_dir.DIRECTORY_SEPARATOR. js_script_name($enum_name),
+							$log
+						);
+						//проверка в md _Model.js
+						self::addJsToMD($this->getJsDirectory().DIRECTORY_SEPARATOR.self::JS_ENUM_DIR.DIRECTORY_SEPARATOR.js_script_name($enum_name),$xml,$js_scripts_to_add);
+						/*
+						$jsscript = self::JS_ENUM_DIR.DIRECTORY_SEPARATOR .js_script_name($enum_name);
+						if ($xml->xpath("/metadata/jsScripts/jsScript[@file='".$jsscript."']")==FALSE){
+							array_push($js_scripts_to_add,$jsscript);
+						}
+						*/									
+					}
+				}				
+			}				
+			
 			/** @ToDo XSLT for every enum in PROJECT/views/enum */
 			
-			//custom_controls/Enum_.js
+			//enum_controls/Enum_.js
+			/*
 			if (file_exists($templ_file = $proj_custom_templ_dir.DIRECTORY_SEPARATOR. self::ENUM_JS_TEMPL) ){
 				//@ToDo: javascript library directory
 				$proj_custom_user_dir = $this->projectDir.DIRECTORY_SEPARATOR. $this->getJsDirectory().DIRECTORY_SEPARATOR. self::JS_ENUM_DIR; 
 				$enum_list = $xml->enums->enum;
 				foreach($enum_list as $enum){
-					//if ($enum->attributes()->cmd=='alt' || $enum->attributes()->cmd=='add'){						
-						$id = $enum->attributes()->id;
-						$enum_name = sprintf(self::ENUM_JS_NAME_TEMPL,$id);
-						if (!file_exists($enum_file = $proj_custom_templ_dir.DIRECTORY_SEPARATOR. $enum_name)){
-							$log->add('Creating new enum template '.$id,'note');
-							$this->str_to_file($enum_file,
-								sprintf(file_get_contents($templ_file),$id)
-							);
-						}
-					
-						if (filemtime($enum_file)>$last_build_dt || $md_modif
-						|| !file_exists($proj_custom_user_dir.DIRECTORY_SEPARATOR. js_script_name($enum_name))){
-							$md_modif = TRUE;
-		
-							$this->transform($md_file,
-								$enum_file,
-								$proj_custom_user_dir.DIRECTORY_SEPARATOR. js_script_name($enum_name),
-								$log
-							);
-							//проверка в md _Model.js
-							$jsscript = self::JS_ENUM_DIR.DIRECTORY_SEPARATOR. js_script_name($enum_name);
-							if ($xml->xpath("/metadata/jsScripts/jsScript[@file='".$jsscript."']")==FALSE){
-								array_push($js_scripts_to_add,$jsscript);
-							}									
-						}
-						
-					//}
+					$id = $enum->attributes()->id;
+					$enum_name = sprintf(self::ENUM_JS_NAME_TEMPL,$id);
+					if (!file_exists($enum_file = $proj_custom_templ_dir.DIRECTORY_SEPARATOR. $enum_name)){
+						$log->add('Creating new enum template '.$id,'note');
+						$this->str_to_file($enum_file,
+							sprintf(file_get_contents($templ_file),$id)
+						);
+					}
+				
+					if (filemtime($enum_file)>$last_build_dt || $md_modif
+					|| !file_exists($proj_custom_user_dir.DIRECTORY_SEPARATOR. js_script_name($enum_name))){
+						$md_modif = TRUE;
+	
+						$this->transform($md_file,
+							$enum_file,
+							$proj_custom_user_dir.DIRECTORY_SEPARATOR. js_script_name($enum_name),
+							$log
+						);
+						//проверка в md _Model.js
+						$jsscript = self::JS_ENUM_DIR.DIRECTORY_SEPARATOR. js_script_name($enum_name);
+						if ($xml->xpath("/metadata/jsScripts/jsScript[@file='".$jsscript."']")==FALSE){
+							array_push($js_scripts_to_add,$jsscript);
+						}									
+					}
 				}				
 			}
-			//custom_controls/EnumGridColumn_.js
+			//enum_controls/EnumGridColumn_.js
 			if (file_exists($templ_file = $proj_custom_templ_dir.DIRECTORY_SEPARATOR. self::ENUM_GRID_COL_JS_TEMPL) ){
 				//@ToDo: javascript library directory
 				$proj_custom_user_dir = $this->projectDir.DIRECTORY_SEPARATOR. $this->getJsDirectory().DIRECTORY_SEPARATOR. self::JS_ENUM_DIR; 
 				$enum_list = $xml->enums->enum;
 				foreach($enum_list as $enum){
-					//if ($enum->attributes()->cmd=='alt' || $enum->attributes()->cmd=='add'){						
-						$id = $enum->attributes()->id;
-						$enum_name = sprintf(self::ENUM_GRID_COL_JS_NAME_TEMPL,$id);
-						if (!file_exists($enum_file = $proj_custom_templ_dir.DIRECTORY_SEPARATOR. $enum_name)){
-							$log->add('Creating new enum gridColumn template '.$id,'note');
-							$this->str_to_file($enum_file,
-								sprintf(file_get_contents($templ_file),$id)
-							);
-						}
-					
-						if (filemtime($enum_file)>$last_build_dt || $md_modif
-						|| !file_exists($proj_custom_user_dir.DIRECTORY_SEPARATOR. js_script_name($enum_name))){
-							$md_modif = TRUE;
-		
-							$this->transform($md_file,
-								$enum_file,
-								$proj_custom_user_dir.DIRECTORY_SEPARATOR. js_script_name($enum_name),
-								$log
-							);
-							//проверка в md _Model.js
-							$jsscript = self::JS_ENUM_DIR.DIRECTORY_SEPARATOR .js_script_name($enum_name);
-							if ($xml->xpath("/metadata/jsScripts/jsScript[@file='".$jsscript."']")==FALSE){
-								array_push($js_scripts_to_add,$jsscript);
-							}									
-						}
-						
-					//}
+					$id = $enum->attributes()->id;
+					$enum_name = sprintf(self::ENUM_GRID_COL_JS_NAME_TEMPL,$id);
+					if (!file_exists($enum_file = $proj_custom_templ_dir.DIRECTORY_SEPARATOR. $enum_name)){
+						$log->add('Creating new enum gridColumn template '.$id,'note');
+						$this->str_to_file($enum_file,
+							sprintf(file_get_contents($templ_file),$id)
+						);
+					}
+				
+					if (filemtime($enum_file)>$last_build_dt || $md_modif
+					|| !file_exists($proj_custom_user_dir.DIRECTORY_SEPARATOR. js_script_name($enum_name))){
+						$md_modif = TRUE;
+	
+						$this->transform($md_file,
+							$enum_file,
+							$proj_custom_user_dir.DIRECTORY_SEPARATOR. js_script_name($enum_name),
+							$log
+						);
+						//проверка в md _Model.js
+						$jsscript = self::JS_ENUM_DIR.DIRECTORY_SEPARATOR .js_script_name($enum_name);
+						if ($xml->xpath("/metadata/jsScripts/jsScript[@file='".$jsscript."']")==FALSE){
+							array_push($js_scripts_to_add,$jsscript);
+						}									
+					}
 				}				
-			}
+			}			
+			*/
 			
+			//app enums enum grid template
+			$app_enums_out = $this->projectDir.DIRECTORY_SEPARATOR. $this->getJsDirectory().DIRECTORY_SEPARATOR. self::JS_CUSTOM_DIR.DIRECTORY_SEPARATOR.js_script_name(self::ENUM_APP_JS_TEMPL);
+			if (
+			(!file_exists($app_enums_out) || $rebuild_app_enums)
+			&&file_exists($templ_file = $proj_templates_dir.DIRECTORY_SEPARATOR. 'js'.DIRECTORY_SEPARATOR. self::JS_CUSTOM_DIR.DIRECTORY_SEPARATOR. self::ENUM_APP_JS_TEMPL)
+			){
+				$log->add('Creating App.enums.js','debug');
+				$this->transform($md_file,
+					$templ_file,
+					$app_enums_out,
+					$log
+				);
+				//проверка в md custom_controls/App.enums.js
+				self::addJsToMD($this->getJsDirectory().DIRECTORY_SEPARATOR.self::JS_CUSTOM_DIR.DIRECTORY_SEPARATOR.js_script_name(self::ENUM_APP_JS_TEMPL),$xml,$js_scripts_to_add);
+				/*
+				$jsscript = self::JS_CUSTOM_DIR.js_script_name(self::ENUM_APP_JS_TEMPL);
+				if ($xml->xpath("/metadata/jsScripts/jsScript[@file='".$jsscript."']")==FALSE){
+					array_push($js_scripts_to_add,$jsscript);
+				}
+				*/									
+				
+			}
 		}
 		//*********** JS Enums ********************************	
 	
 	
 		//************ JS Templates ***************************
 		$js_dir = $this->projectDir.DIRECTORY_SEPARATOR. $this->getJsDirectory();
-		$tmpl_list = $xml->jsTemplates->jsTemplate;
+		
+		$tmpl_list = $xml->jsTemplates->jsTemplate;//all templates
+		$tmpl_serv_list = $xml->serverTemplates->serverTemplate;		
 		$js_out_file = $js_dir.DIRECTORY_SEPARATOR. self::TMPL_DIR.DIRECTORY_SEPARATOR. self::APP_JS_TMPL;
 		$recreate = (!file_exists($js_out_file));
+		
+		$srv_tmpl_mod_n = $xml->xpath("/metadata/serverTemplates/serverTemplate[@cmd='alt' or @cmd='add' or @cmd='del']");
+		$loc_tmpl_mod_n = $xml->xpath("/metadata/jsTemplates/jsTemplate[@cmd='alt' or @cmd='add' or @cmd='del']");
+		if(!$recreate
+		&& isset($srv_tmpl_mod_n) && is_array($srv_tmpl_mod_n) && count($srv_tmpl_mod_n)
+		&& isset($loc_tmpl_mod_n) && is_array($loc_tmpl_mod_n) && count($loc_tmpl_mod_n)
+		){
+			$recreate = TRUE;
+		}
+		
 		if ($tmpl_list && !$recreate){
 			foreach($tmpl_list as $tmpl){
+				//added 2024-03-12
+				$fl_name = $tmpl->attributes()->file;
+				if(substr($fl_name, 0, 4) != "tmpl"){
+					//js folder is in path
+					$fl = $this->projectDir.DIRECTORY_SEPARATOR. $fl_name;
+				}else{
+					$fl = $js_dir.DIRECTORY_SEPARATOR. $fl_name;
+				}
 				if (
-					file_exists($fl = $js_dir.DIRECTORY_SEPARATOR. $tmpl->attributes()->file)
+					file_exists($fl)
 					&& filemtime($fl)>$last_build_dt
 				){
 					$recreate = TRUE;
@@ -768,18 +1043,35 @@ class ProjectManager extends Manager{
 				}
 			}
 		}
-		if ($tmpl_list && $recreate){
+		if ( ($tmpl_list||$tmpl_serv_list) && $recreate){
 			$log->add('Recreating js template file','note');
-			$tmpl_file_cont = '/* Copyright (c) 2017
-	Andrey Mikhalevich, Katren ltd.
-
-This file is created automaticaly during build process
-DO NOT MODIFY IT!!!	
-*/
+			$tmpl_file_cont = '/** Copyright (c) 2017,2019
+ * Andrey Mikhalevich, Katren ltd.
+ *
+ * This file is created automaticaly during build process
+ * DO NOT MODIFY IT!!!	
+ */
+ 		App.prototype.m_serverTemplateIds = [';
+			$i = 0;
+			foreach($tmpl_serv_list as $tmpl){
+				$tmpl_file_cont.= ($i==0)? '':',';
+				$tmpl_file_cont.= '"'.$tmpl->attributes()->id.'"';
+				$i++;
+			}
+ 		$tmpl_file_cont.= '];';	
+ 		$tmpl_file_cont.= '
 		App.prototype.m_templates = {';		
 			$i = 0;
 			foreach($tmpl_list as $tmpl){
-				if (file_exists($fl = $js_dir.DIRECTORY_SEPARATOR. $tmpl->attributes()->file)
+				$fl_name = $tmpl->attributes()->file;
+				if(substr($fl_name, 0, 4) != "tmpl"){
+					//js folder is in path
+					$fl = $this->projectDir.DIRECTORY_SEPARATOR. $fl_name;
+				}else{
+					$fl = $js_dir.DIRECTORY_SEPARATOR. $fl_name;
+				}
+				
+				if (file_exists($fl)
 				){
 					$tmpl_file_cont.= ($i==0)? '':',';
 					/*
@@ -810,7 +1102,8 @@ DO NOT MODIFY IT!!!
 					$proj_views_templ_dir.DIRECTORY_SEPARATOR. self::VIEW_BASE_PHP_TEMPL,
 					$proj_user_view_dir.DIRECTORY_SEPARATOR. php_script_name(self::VIEW_BASE_PHP_TEMPL),
 					$log
-					);		
+					);
+				self::check_php_file_syntax($proj_user_view_dir.DIRECTORY_SEPARATOR. php_script_name(self::VIEW_BASE_PHP_TEMPL));		
 			}
 		}
 		//*********** base view ********************************
@@ -933,14 +1226,15 @@ DO NOT MODIFY IT!!!
 			*/
 			
 			//SQL scripts to sql
-			/*
 			$sql_list = $xml->sqlScripts->sqlScript;
 			if (!is_null($sql_list)){
 				foreach($sql_list as $sql){	
 					if (
 						$sql->attributes()->cmd
 						&& ($sql->attributes()->cmd=='alt' || $sql->attributes()->cmd=='add')
-						&& file_exists($f_sql = $proj_build_dir.DIRECTORY_SEPARATOR. self::SQL_DIR.DIRECTORY_SEPARATOR. $sql->attributes()->file)
+						&& (file_exists($f_sql = $proj_build_dir.DIRECTORY_SEPARATOR. self::SQL_DIR.DIRECTORY_SEPARATOR. $sql->attributes()->file)
+						|| file_exists($f_sql = $proj_build_dir.DIRECTORY_SEPARATOR. $sql->attributes()->file)
+						)
 					){
 						$this->str_to_file($f_last_update,
 							trim(file_get_contents($f_last_update)).PHP_EOL.PHP_EOL.PHP_EOL.
@@ -950,7 +1244,6 @@ DO NOT MODIFY IT!!!
 					}
 				}
 			}
-			*/
 			
 			/*
 			$cont_last_update = trim(file_get_contents($f_last_update));
@@ -1088,19 +1381,18 @@ DO NOT MODIFY IT!!!
 		$parent_n = $parent_list->item($parent_list->length-1);
 		
 		$vers_n = $dom->createElement('version',$version);
-		$vers_n->setAttribute('dateOpen', date('Y-m-d H:m:i'));
+		$vers_n->setAttribute('dateOpen', date('Y-m-d H:i:s'));
 		
 		$parent_n->appendChild($vers_n);
 		//$dom->save($md_file);	
 		self::saveDOM($dom,$md_file);
 		
 		//remove old sql
-		$build_dir = $this->projectDir.DIRECTORY_SEPARATOR. self::BUILD_DIR. $proj_build_dir.DIRECTORY_SEPARATOR;
-		if (file_exists($f = $build_dir.self::DB_UPDATE_SCRIPT)){
+		if (file_exists($f = $this->projectDir.DIRECTORY_SEPARATOR. self::BUILD_DIR. DIRECTORY_SEPARATOR. self::SQL_DIR.DIRECTORY_SEPARATOR.self::DB_UPDATE_SCRIPT)){
 			unlink($f);
 		}
 		//last update
-		if (file_exists($f = $build_dir.self::SQL_DIR.DIRECTORY_SEPARATOR.self::DB_LAST_UPDATE_SCRIPT)){
+		if (file_exists($f = $this->projectDir.DIRECTORY_SEPARATOR.self::BUILD_DIR. DIRECTORY_SEPARATOR.self::SQL_DIR.DIRECTORY_SEPARATOR.self::DB_LAST_UPDATE_SCRIPT)){
 			unlink($f);
 		}
 	}
@@ -1117,7 +1409,7 @@ DO NOT MODIFY IT!!!
 		   throw new Exception('version node not found!');
 		} 
 		$n = $list->item($list->length-1);
-		$n->setAttribute('dateClose', date('Y-m-d H:m:i'));
+		$n->setAttribute('dateClose', date('Y-m-d H:i:s'));
 		$dom->save($md_file);
 		
 		$log->add("Version closed.",'warn');
@@ -1151,52 +1443,15 @@ DO NOT MODIFY IT!!!
 	}
 	*/
 	
-	/*
+	/**
 	 * @param {array} startProjParams copy of _REQUEST
 	 * @param {Logger} log
 	 */
 	public function startProject($startProjParams, $log){
 		$repo_templ_dir = $this->repoDir.DIRECTORY_SEPARATOR. self::TEMPL_DIR;
 		//metadata modification
-		$startProjParams['timestamp'] = date('Y-m-d H:m:i');
+		$startProjParams['timestamp'] = date('Y-m-d H:i:s');
 		
-		/******************** DB superuser code *****************************/
-		$dbAuth = array(
-			'DB_PASSWORD'=>$startProjParams['DB_CREATE_PASSWORD'],
-			'DB_SERVER_MASTER'=>$startProjParams['DB_SERVER'],
-			'DB_NAME'=>'postgres',
-			'DB_USER'=>$startProjParams['DB_CREATE_USER']
-		);
-		$m = new Mustache_Engine;		
-		
-		//new user
-		$q = $m->render("CREATE USER {{DB_USER}} WITH PASSWORD '{{DB_PASSWORD}}';",$startProjParams);
-		$this->runSQL($dbAuth,$q,$log);
-		$startProjParams['SUPERUSER_CODE'] = $q;
-		
-		//new database
-		$q = $m->render("CREATE DATABASE {{DB_NAME}} OWNER {{DB_USER}};",$startProjParams);		
-		$this->runSQL($dbAuth,$q,$log);
-		$startProjParams['SUPERUSER_CODE'].= PHP_EOL.$q;
-		
-		//new database
-		$q = $m->render("GRANT ALL PRIVILEGES ON DATABASE {{DB_NAME}} TO {{DB_USER}};",$startProjParams);
-		$this->runSQL($dbAuth,$q,$log);
-		$startProjParams['SUPERUSER_CODE'].= PHP_EOL.$q;
-		
-		if (strtolower($startProjParams['DB_SCHEMA'])!='public'){
-			//new schema
-			$q = $m->render("CREATE SCHEMA {{DB_SCHEMA}};",$startProjParams);
-			$this->runSQL($dbAuth,$q,$log);
-			$startProjParams['SUPERUSER_CODE'].= PHP_EOL.$q;
-		}
-		
-		$q = $m->render("GRANT SELECT ON ALL TABLES IN SCHEMA {{DB_SCHEMA}} TO {{DB_USER}};",$startProjParams);
-		$this->runSQL($dbAuth,$q,$log);
-		$startProjParams['SUPERUSER_CODE'].= PHP_EOL.$q;
-		/******************** DB superuser code *****************************/
-
-
 		/******************** Templates *******************************/		
 		$this->copy_all_templates($repo_templ_dir, $this->projectDir,$startProjParams);		
 		$log->add('Template files are created.','note');
@@ -1214,28 +1469,33 @@ DO NOT MODIFY IT!!!
 		/**************** start version in metadata **********************/
 		
 		
-		/*******************  db init *********************************/
+		/*******************  execute db init scripts superuser/user *********************************/
 		/**
 		 * File self::INIT_DB_FILE_NAME contains all essetial init db script
-		 * 1) Add superuser code to init script
-		 * 2) put init script to build/update.sql and run it
 		 */
-		$dbAuth = array(
-			'DB_PASSWORD'=>$startProjParams['DB_PASSWORD'],
-			'DB_SERVER_MASTER'=>$startProjParams['DB_SERVER'],
-			'DB_NAME'=>$startProjParams['DB_NAME'],
-			'DB_USER'=>$startProjParams['DB_USER']
-		);
-		//1)		
-		$f_init_db = $this->projectDir.DIRECTORY_SEPARATOR. self::BUILD_DIR.DIRECTORY_SEPARATOR. self::SQL_DIR. DIRECTORY_SEPARATOR. self::INIT_DB_FILE_NAME;
-		$cont_init_db = '';
-		if (file_exists($f_init_db)){
-			$cont_init_db = PHP_EOL. $m->render(file_get_contents($f_init_db),$startProjParams);
-		}
-		//2)
-		$f_update = $this->projectDir.DIRECTORY_SEPARATOR. self::BUILD_DIR.DIRECTORY_SEPARATOR. self::DB_UPDATE_SCRIPT;
-		$this->str_to_file($f_update,$cont_init_db);
-		$this->runSQLFromFile($dbAuth,$f_update,$log);		
+		//if($startProjParams['EXEC_INIT_DB_SCRIPTS']){
+			$dbSUAuth = array(
+				'DB_PASSWORD'=>$startProjParams['DB_CREATE_PASSWORD'],
+				'DB_SERVER_MASTER'=>$startProjParams['DB_SERVER'],
+				'DB_NAME'=>'postgres',
+				'DB_USER'=>$startProjParams['DB_CREATE_USER']
+			);		 			
+			//1)		
+			if(file_exists($f_init_db = $this->projectDir.DIRECTORY_SEPARATOR. self::BUILD_DIR.DIRECTORY_SEPARATOR. self::SQL_DIR. DIRECTORY_SEPARATOR. self::INIT_DB_SU_FILE_NAME)){
+				$log->add('Executing superuser database script.','note');
+				$this->runSQLFromFile($dbSUAuth,$f_init_db,$log);		
+				
+				//to this database
+				$dbSUAuth = array(
+					'DB_PASSWORD'=>$startProjParams['DB_CREATE_PASSWORD'],
+					'DB_SERVER_MASTER'=>$startProjParams['DB_SERVER'],
+					'DB_NAME'=>$startProjParams['DB_NAME'],
+					'DB_USER'=>$startProjParams['DB_CREATE_USER']
+				);		 				
+				$log->add('Creating extension.','note');
+				$this->runSQL($dbSUAuth,'CREATE EXTENSION pgcrypto;',$log);		
+			}
+		//}
 		/*******************  db init *********************************/
 
 		
@@ -1249,7 +1509,7 @@ DO NOT MODIFY IT!!!
 		
 		/******************** server repository *************************/
 		if (isset($startProjParams['GITHUB_USER']) && strlen($startProjParams['GITHUB_USER'])){
-		
+			/*require_once('Config.php');
 			$git = new GitRepo($this->projectDir,TRUE,TRUE);
 			$git->run(sprintf('config  user.email "%s"',$startProjParams['TECH_EMAIL']));
 			$git->run(sprintf('config  user.name "%s"',$startProjParams['GITHUB_USER']));
@@ -1258,8 +1518,17 @@ DO NOT MODIFY IT!!!
 				$startProjParams['APP_NAME'])
 			);
 			$log->add('Server repository is created.','note');		
+			
+			if(!defined('TECH_EMAIL')){
+				define('TECH_EMAIL',$startProjParams['TECH_EMAIL']);
+			}
+			if(!defined('GITHUB_USER')){
+				define('GITHUB_USER',$startProjParams['GITHUB_USER']);
+			}
+			//this call depends on constants!!!						
 			$this->commit('Creating new repository',$log);
-			$this->push($log);
+			
+			$this->push($log);*/
 			/******************** server repository *************************/		
 		}
 		else{
@@ -1271,24 +1540,24 @@ DO NOT MODIFY IT!!!
 		$git = new GitRepo($this->projectDir);
 		$git->run(sprintf('config  user.email "%s"',TECH_EMAIL));
 		$git->run(sprintf('config  user.name "%s"',GITHUB_USER));
-		$git->run('pull origin master');	
+		$git->run('pull origin main');	
 		$log->add('Project files are pulled from the server.','warn');
 	}
 	public function push($log){
 		$git = new GitRepo($this->projectDir);
 		$git->run(sprintf('config  user.email "%s"',TECH_EMAIL));
 		$git->run(sprintf('config  user.name "%s"',GITHUB_USER));
-		$git->run('push origin master');
+		$git->run('push origin');//changed master to main
 		$log->add('Project files are pushed to the server.','warn');
 	}
 
 	public function commit($commitDescr,$log){
 		//@ToDo
 		setlocale(LC_ALL, 'ru_RU.UTF-8');
-	
+	echo 'commit projectDir='.$this->projectDir.'</br>';
 		$git = new GitRepo($this->projectDir);
-		$git->run(sprintf('config  user.email "%s"',TECH_EMAIL));
-		$git->run(sprintf('config  user.name "%s"',GITHUB_USER));
+		//$git->run(sprintf('config  user.email "%s"',TECH_EMAIL));
+		//$git->run(sprintf('config  user.name "%s"',GITHUB_USER));
 		$git->add('--all .');
 		$git->commit($commitDescr, TRUE);
 	}
@@ -1431,6 +1700,60 @@ DO NOT MODIFY IT!!!
 			''
 		);
 		*/
+	}
+	
+	//upload updates to server
+	public function upload_update($params, $log){
+		//iterate production hosts
+		foreach($params['HOSTS'] as $h){
+			//stop remote app
+			$host = trim($h);
+			
+			$cmd = sprintf('ssh %s %s', $host, $params['APP_STOP']);
+			$log->add('Shell: '.$cmd, 'note');
+			$out = '';
+			try{
+				$out = $this->run_shell_cmd($cmd);					
+			}catch (Exception $e){				
+			}
+			$log->add('stop result: '.$out, 'note');
+			
+			//copy all modified files
+			if(isset($params['FILES'])){
+				foreach($params['FILES'] as $f){
+					$fl = trim($f);
+					$cmd = sprintf('rsync -az -e "ssh" %s %s:%s/', $this->projectDir.DIRECTORY_SEPARATOR.$fl, $host, $params['APP_DIR'].DIRECTORY_SEPARATOR.dirname($fl));
+					$log->add('Shell: '.$cmd, 'note');
+					$out = $this->run_shell_cmd($cmd);
+					$log->add('rsync result: '.$out, 'note');
+				}	
+			}
+			
+			//sql
+			if($params['DB_SERVER'] && $params['DB_SERVER']!=$params['DB_SERVER_MASTER']){
+				$this->applySQL(array(
+						'DB_SERVER_MASTER' => $params['DB_SERVER'],
+						'DB_SERVER' => $params['DB_SERVER'],
+						'DB_NAME' => $params['DB_NAME'],
+						'DB_USER' => $params['DB_USER'],
+						'DB_PASSWORD' => $params['DB_PASSWORD']
+					),
+					$log
+				);
+			}
+			
+			//start remote app
+			$cmd = sprintf('ssh %s %s', $host, $params['APP_START']);
+			$log->add('Shell: '.$cmd, 'note');
+			$out = '';
+			try{
+				$out = $this->run_shell_cmd($cmd);					
+			}catch (Exception $e){				
+			}
+			$log->add('start result: '.$out, 'note');
+			
+		}
+		
 	}
 	
 	/*

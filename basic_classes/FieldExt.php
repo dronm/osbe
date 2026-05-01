@@ -35,13 +35,11 @@ class FieldExt extends Field{
 	}
 	public function isTooLong($val){
 		$len = $this->getLength();
-		return (isset($len)
-				&& $len<strlen($val));
+		return (isset($val) && isset($len) && $len < strlen($val));
 	}
 	public function isTooShort($val){
 		$min_len = $this->getMinLength();
-		return (isset($min_len)
-				&& $min_len>strlen($val));
+		return (isset($val) && isset($min_len) && $min_len>strlen($val));
 	}
 	
 	public function validate($val){

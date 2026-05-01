@@ -32,7 +32,7 @@ ValidatorEnum.prototype.validate = function(val){
 	ValidatorEnum.superclass.validate.call(this,val);
 		
 	var vals = this.getEnumValues();
-	if (vals!==undefined && vals.indexOf(val)<0){
+	if (vals!==undefined && val!=undefined && vals.indexOf(val)<0){
 		throw new Error(this.ER_INVALID);
 	}
 	

@@ -1,36 +1,38 @@
 /**	
  * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2017
 
- * @extends
- * @requires core/extend.js  
+ * @extends ViewAjx
+ * @requires core/extend.js
+ * @requires ViewAjx.js     
 
  * @class
  * @classdesc
  
  * @param {string} id - Object identifier
  * @param {Object} options
- * @param {string} options.className
+ * @param {bool} options.modalSelect
  */
 function ViewAjxList(id,options){
 	options = options || {};	
 	
-	if (window.onSelect){
-		var self = this;
-		//list for selection in a standalone window
+	var self = this;
+	if (window.onSelect || options.modalSelect){//standalone OR modal window		
+		//list for selection in a standalone or modal window
 		options.cmdSelect = (options.cmdSelect!=undefined)? options.cmdSelect:true;
 		if ( options.controlSelect ||  options.cmdSelect){
 			this.setControlSelect(options.controlSelect || new ButtonMakeSelection(id+":cmdSelect",
 				{"onClick":function(){
-					//alert("OnSelect!!!")
-					//debugger
 					var list = self.getElements();
-					for (var i=0;i<list.length;i++){
-					console.log(list[i].getId())
-						if (list[i].onSelect){
-							list[i].onSelect();
+					var res = false;
+					for (var id in list){
+						if (list[id].onSelect){
+							list[id].onSelect();
+							res = true;
 							break;
 						}
 					}
+					window.closeResult = res;
+					window.close();									
 				}
 			})
 			);

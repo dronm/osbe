@@ -1,20 +1,13 @@
-/* Copyright (c) 2016 
-	Andrey Mikhalevich, Katren ltd.
-*/
-/*	
-	Description
-*/
-/** Requirements
- * @requires 
- * @requires core/extend.js  
-*/
+/**	
+ * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2017
 
-/* constructor
-@param string id
-@param object options{
-
-}
-*/
+ * @class
+ * @classdesc
+ 
+ * @param {string} id - Object identifier
+ * @param {object} options
+ * @param {Validator} options.validator
+ */
 function HiddenKey(id,options){
 	options = options || {};	
 	

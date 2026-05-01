@@ -19,3 +19,29 @@ function FieldXML(id,options){
 	FieldXML.superclass.constructor.call(this,id,options);
 }
 extend(FieldXML,Field);
+
+FieldXML.prototype.getValueXHR = function(){
+	var xml = this.getValue();
+	if(xml){
+		var serializer = new XMLSerializer();
+		return serializer.serializeToString(xml);
+	}
+}
+
+FieldXML.prototype.setValue = function(id,v){
+	if (!v && typeof(id)=="object"){
+		this.m_value = id;
+		
+	}else if (!v && typeof(id)=="string" && id.length){		
+		this.m_value = DOMHelper.xmlDocFromString(id);
+	}
+	else if (v){
+		this.m_value = v;
+	}
+}
+
+FieldXML.prototype.isEmpty = function(val,checkNull){
+
+	return !(typeof val === "object" && val instanceof EditXML && val.childNodes && val.childNodes[0].childNodes && val.childNodes[0].childNodes.length);
+}
+

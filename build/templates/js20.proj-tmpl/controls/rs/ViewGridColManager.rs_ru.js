@@ -6,3 +6,5 @@ ViewGridColManager.prototype.TAB_COLUMNS = "Колонки";
 ViewGridColManager.prototype.TAB_SORT = "Сортировка";
 ViewGridColManager.prototype.TAB_FILTER = "Отбор";
 ViewGridColManager.prototype.HEAD_TITLE = "Настройка списка";
+ViewGridColManager.prototype.TITLE_SAVE = "Сохранить настройку";
+ViewGridColManager.prototype.TITLE_OPEN = "Восстановить настройку";

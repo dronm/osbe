@@ -13,9 +13,10 @@
 function View(id,options){
 	options = options || {};	
 	
-	if (this.HEAD_TITLE){
+	var title = this.HEAD_TITLE || options.HEAD_TITLE;
+	if (title){
 		options.templateOptions = options.templateOptions || {};
-		options.templateOptions.HEAD_TITLE = this.HEAD_TITLE;
+		options.templateOptions.HEAD_TITLE = title;
 	}
 	
 	
@@ -26,7 +27,7 @@ function View(id,options){
 		"updated":false
 	};
 	
-	View.superclass.constructor.call(this,id,(options.tagName || this.DEF_TAG_NAME),options);
+	View.superclass.constructor.call(this, id, (options.tagName || this.DEF_TAG_NAME), options);
 }
 extend(View,ControlContainer);
 
@@ -137,6 +138,37 @@ View.prototype.addDataBinding = function(binding){
  */
 View.prototype.clearDataBinding = function(){
 	this.setDataBindings([]); 
+}
+
+/**
+ * @public
+ * validate/checkes all required fields
+ */
+View.prototype.validate = function(){
+	var res = true;
+	var el_list = this.getElements();
+	for(var id in el_list){
+		if(!el_list[id].getValue){
+			continue;
+		}
+		if (el_list[id].setValid){
+			el_list[id].setValid();
+		}
+		if(el_list[id].validate && !el_list[id].validate()){
+			res = false;
+			continue;
+		}
+		var v = el_list[id].getValue()
+		if (
+			(el_list[id].getIsRef && el_list[id].getIsRef() && !v || v.isNull())
+			||( (!el_list[id].getIsRef || !el_list[id].getIsRef()) && v===null)
+		){
+			el_list[id].setNotValid(Validator? Validator.prototype.ER_EMPTY : "emty value");
+			res = false;
+		}
+		
+	}
+	return res;
 }
 
 

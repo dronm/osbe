@@ -77,6 +77,7 @@ function ViewInlineGridEdit(id,options){
 	this.m_updateMethId = options.updateMethodId || this.DEF_UPDATE_METH_ID;	
 	this.setReadMethodId(options.readMethodId || this.DEF_READ_METH_ID);
 	
+	this.m_dataControls = [];
 }
 extend(ViewInlineGridEdit,View);
 
@@ -94,6 +95,8 @@ ViewInlineGridEdit.prototype.DEF_INSERT_METH_ID = 'insert';
 ViewInlineGridEdit.prototype.DEF_UPDATE_METH_ID = 'update';
 ViewInlineGridEdit.prototype.DEF_READ_METH_ID = "get_object";
 ViewInlineGridEdit.prototype.DEF_TAG_NAME = "tr";
+
+ViewInlineGridEdit.prototype.m_dataControls;
 //
 ViewInlineGridEdit.prototype.getOnClose = function(){
 	return this.m_onClose;
@@ -179,6 +182,8 @@ ViewInlineGridEdit.prototype.addDataControl = function(control,readBind,writeBin
 	var container = new ControlContainer(uuid(),"div",{
 		className:this.m_containerClassName
 	});	
+	
+	this.m_dataControls[control.getId()] = control;
 	
 	var container_td = new ControlContainer(uuid(),"td");	
 	container_td.setVisible(control.getVisible());

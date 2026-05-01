@@ -67,9 +67,9 @@ GridFastFilter.prototype.addFilterControl = function(control,filter){
 				self.refresh();
 			}
 		}				
-	}	
-
-	if (control.getEditMask && !control.getEditMask() && control.getNode().nodeName.toLowerCase()=="input"){
+	}
+	//control.getEditMask && !control.getEditMask() && 	
+	if (control.getNode().nodeName.toLowerCase()=="input"){
 		var attr = control.getAttr("type");
 		if (attr=="text"){
 			control.m_events = {

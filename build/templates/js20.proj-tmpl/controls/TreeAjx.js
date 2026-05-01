@@ -1,15 +1,15 @@
 /**	
  * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2017
 
- * @extends
- * @requires core/extend.js  
+ * @extends GridAjx
+ * @requires core/extend.js
+ * @requires GridAjx.js     
 
  * @class
  * @classdesc
  
  * @param {string} id - Object identifier
- * @param {namespace} options
- * @param {string} options.className
+ * @param {object} options
  */
 function TreeAjx(id,options){
 	options = options || {};	
@@ -20,6 +20,7 @@ function TreeAjx(id,options){
 	
 	options.autoRefresh = false;
 	options.editInline = (options.editInline!=undefined)? options.editInline:true;
+	options.inlineInsertPlace = (options.inlineInsertPlace!=undefined)? options.inlineInsertPlace:"current";
 	options.editViewOptions = options.editViewOptions || {
 		"tagName":"LI",
 		"columnTagName":"DIV"
@@ -136,7 +137,9 @@ TreeAjx.prototype.edit = function(cmd){
 		//root
 		return 0;
 	}
-	
+	if(cmd=="insert"){
+		this.setModelToCurrentRow();
+	}
 	TreeAjx.superclass.edit.call(this,cmd);
 }
 
@@ -182,7 +185,7 @@ TreeAjx.prototype.onGetData = function(){
 		row_cnt = -1;//FIRST ROW IS DUMB
 		var r_class = this.getHead().getRowClass(h_row_ind);
 		//row = new r_class(this.getId()+":"+this.getBody().getName()+":"+row_cnt,{});
-		row = this.createNewRow(row_cnt,h_row_ind);
+		row = this.createNewRow(row_cnt,h_row_ind,row_cnt+1);
 		var root_node = new ControlContainer(null,"UL");
 		row.addElement(new GridCell(row.getId()+":descr",{"value":this.getRootCaption(),"tagName":"SPAN"}));
 		row.addElement(root_node);		
@@ -190,8 +193,8 @@ TreeAjx.prototype.onGetData = function(){
 		row_cnt++;
 		//**************************************************
 		this.m_model.reset();
-		while(this.m_model.getNextRow()){			
-			row = this.createNewRow(row_cnt,h_row_ind);
+		while(this.m_model.getNextRow()){		
+			row = this.createNewRow(row_cnt,h_row_ind,row_cnt+1);
 
 			row_keys = {};
 			for(var k=0;k<this.m_keyIds.length;k++){
@@ -249,34 +252,44 @@ TreeAjx.prototype.onGetData = function(){
 				root_node.addElement(row);
 			}
 			
-			row.m_drag = new DragObject(row.getNode());			
+			row.m_drag = new DragObject(row.getNode(),{"offsetY":60,"offsetX":-100});			
 			row.m_drop = new DropTarget(row.getNode());
 			row.m_drop.accept = function(dragObject) {
 				var drop_id = CommonHelper.unserialize(this.element.getAttribute("keys")).id;
 				var drag_id = CommonHelper.unserialize(dragObject.element.getAttribute("keys")).id;					
 				//console.log("FromId="+drag_id+" to Id="+drop_id)
 				
-				self.m_model.resetFields();
-				self.m_model.m_fields.id.setValue(drag_id)
-				var drag_row = self.m_model.recLocate(self.m_model.m_fields)[0];
+				var key_fields = {
+					"id":new FieldInt("id")
+				}
+				
+				key_fields.id.setValue(drag_id);
+				var drag_row;
+				var drag_row_a = self.m_model.recLocate(key_fields,true);
+				if(drag_row_a&&drag_row_a.length){					
+					drag_row = self.m_model.m_currentRow;
+				}
 
-				self.m_model.resetFields();
-				self.m_model.m_fields.id.setValue(drop_id)					
-				var drop_row = self.m_model.recLocate(self.m_model.m_fields)[0];
-				
-				drop_row.parentNode.insertBefore(drag_row,drop_row);
-				/*
-				if (self.m_model.getFieldValue("viewDescr")){
-					//elem
+				key_fields.id.setValue(drop_id);
+				var drop_row;
+				var drop_row_a = self.m_model.recLocate(key_fields,true);
+				if(drop_row_a&&drop_row_a.length){					
+					drop_row = self.m_model.m_currentRow;
+				}
+				if(drag_row&&drop_row){
 					drop_row.parentNode.insertBefore(drag_row,drop_row);
+					/*
+					if (self.m_model.getFieldValue("viewDescr")){
+						//elem
+						drop_row.parentNode.insertBefore(drag_row,drop_row);
+					}
+					else{
+						//group
+						DOMHelper.setParent(drag_row,drop_row);
+					}
+					*/
+					self.onRefresh();
 				}
-				else{
-					//group
-					DOMHelper.setParent(drag_row,drop_row);
-				}
-				*/
-				self.onRefresh();
-				
 			}			
 			//**************************************************
 						
@@ -302,5 +315,38 @@ TreeAjx.prototype.onGetData = function(){
 	if (this.m_navigate || this.m_navigateClick){
 		this.setSelection();
 	}
+}
+
+TreeAjx.prototype.onDelete = function(callBack){	
+	var res = false;
+	if (this.m_cmdDelete){
+		//prevent Root node deletion
+		var selected_node = this.getSelectedRow();
+		if(selected_node.parentNode==this.getBody().getNode()){
+			return;	
+		}
+		
+		if (selected_node){
+			var self = this;
+			this.setFocused(false);
+			WindowQuestion.show({
+				"cancel":false,
+				"text":this.Q_DELETE,
+				"callBack":function(r){
+					if (r==WindowQuestion.RES_YES){
+						self.delRow(selected_node);
+					}
+					else{
+						self.focus();	
+					}
+					if(callBack){
+						callBack(r);
+					}
+				}
+			});	
+			res = true;
+		}
+	}
+	return res;
 }
 

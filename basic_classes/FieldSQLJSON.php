@@ -8,10 +8,13 @@ class FieldSQLJSON extends FieldSQLString{
 		return "'".$this->getDbLink()->escape_string($val)."'";
 	}
 	*/
-	public function __construct($dbLink,$dbName, $tableName,
-					$id, $options=false) {
-		parent::__construct($dbLink,$dbName, $tableName,
-				$id,$options);
+	public function __construct($dbLink,$dbName, $tableName,$id, $options=FALSE) {
+		if(!$options){
+			$options = array();
+		}
+		$options['dataType'] = DT_JSON;
+		
+		parent::__construct($dbLink,$dbName, $tableName,$id,$options);
 	}		
 }
 ?>

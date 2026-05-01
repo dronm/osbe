@@ -40,7 +40,9 @@ function <xsl:value-of select="$model_id"/>(options){
 		<xsl:apply-templates select="/metadata/models/model[@id=$base_model_id]/field"/>		
 	</xsl:if>	
 	<xsl:apply-templates/>
-	
+	<xsl:if test="@calcHash='TRUE'">
+	options.calcHash = true;
+	</xsl:if>		
 	<xsl:value-of select="$model_id"/>.superclass.constructor.call(this,id,options);
 }
 extend(<xsl:value-of select="$model_id"/>,<xsl:value-of select="$parent_class"/>);
@@ -169,6 +171,12 @@ extend(<xsl:value-of select="$model_id"/>,<xsl:value-of select="$parent_class"/>
 </xsl:template>
 
 <xsl:template match="model/predefinedItems">
+</xsl:template>
+
+<xsl:template match="descr">
+	/*
+	<xsl:value-of select="node()"/>
+	*/
 </xsl:template>
 
 <xsl:template name="boolToScript">

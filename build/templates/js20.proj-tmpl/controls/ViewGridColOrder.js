@@ -4,11 +4,13 @@
  * @class
  * @classdesc
 
+ * @extends ViewGridColParam  
+ 
  * @requires core/extend.js  
  * @requires controls/ViewGridColParam.js
 
- * @param {string} id Object identifier
- * @param {namespace} options
+ * @param {string} id - Object identifier
+ * @param {object} options
 */
 function ViewGridColOrder(id,options){
 	options = options || {};	
@@ -45,8 +47,7 @@ ViewGridColOrder.prototype.addCells = function(row,fStruc){
 			new EditCheckBox(pref+":"+this.COL_CHECK_ID+":toggle",{			
 				"className":"field_toggle",
 				"checked":fStruc.checked,
-				"attrs":{"align":"center"},
-				"app":this.getApp()
+				"attrs":{"align":"center"}
 			})
 		]		
 		}
@@ -71,19 +72,16 @@ ViewGridColOrder.prototype.addCells = function(row,fStruc){
 						"labelCaption":this.ASC_CAP,
 						"name":fStruc.id+"_direct",
 						"editContClassName":"input-group "+window.getBsCol(1),
-						"attrs":at_asc,
-						"app":this.getApp()
+						"attrs":at_asc
 					}),
 					new EditRadio(pref+":"+this.COL_DIR_ID+":radiogroup:radio-desc",{
 						"value":"desc",
 						"labelCaption":this.DESC_CAP,
 						"name":fStruc.id+"_direct",
 						"editContClassName":"input-group "+window.getBsCol(1),
-						"attrs":at_desc,
-						"app":this.getApp()
+						"attrs":at_desc
 					})
-				],
-				"app":this.getApp()
+				]
 			})		
 		]}
 	));

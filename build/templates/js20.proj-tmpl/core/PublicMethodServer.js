@@ -13,7 +13,8 @@
  * @param {ControllerAjx} options.controller
  * @param {string} options.requestType
  * @param {bool} options.async
- * @param {string} options.encType       
+ * @param {string} options.encType
+ * @param {bool} [options.ws=false] use web socket
  */
 function PublicMethodServer(id,options){
 	options = options || {};	
@@ -25,6 +26,7 @@ function PublicMethodServer(id,options){
 	this.setRequestType(options.requestType);
 	this.setAsync(options.async);
 	this.setEncType(options.encType);
+	this.setWS(options.ws);
 	
 	PublicMethodServer.superclass.constructor.call(this,id,options);
 }
@@ -37,7 +39,7 @@ extend(PublicMethodServer,PublicMethod);
 PublicMethodServer.prototype.m_requestType;
 PublicMethodServer.prototype.m_sync;
 PublicMethodServer.prototype.m_encType;
-
+PublicMethodServer.prototype.m_ws;
 
 /* protected*/
 
@@ -64,14 +66,24 @@ PublicMethodServer.prototype.setEncType = function(v){
 	this.m_encType = v;
 }
 
-PublicMethodServer.prototype.download = function(viewId,ind){
+PublicMethodServer.prototype.download = function(viewId,ind,callBack){
 	//arguments to fields
-	this.getController().download(this.getId(),viewId,ind);
+	this.getController().download(this.getId(),viewId,ind,callBack);
 }
-PublicMethodServer.prototype.openHref = function(viewId,winParams){
-	this.getController().openHref(this.getId(),viewId,winParams);
+PublicMethodServer.prototype.openHref = function(viewId, winParams, winName){
+	return this.getController().openHref(this.getId(),viewId,winParams,winName);
 }
 
 PublicMethodServer.prototype.run = function(options){
-	this.getController().run(this.getId(),options);
+	if(this.m_ws===true && options.ws==undefined){
+		options.ws = true;
+	}
+	return this.getController().run(this.getId(), options);
+}
+
+PublicMethodServer.prototype.getWS = function(){	
+	return this.m_ws;
+}
+PublicMethodServer.prototype.setWS = function(v){	
+	this.m_ws = v;
 }

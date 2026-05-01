@@ -20,12 +20,25 @@
 				<{{LOCALE}} descr="{{ADM_ROLE_DESCR}}"/>
 			</value>
 		</enum>	
+		<enum cmd="add" id="data_types" descr="Типы данных">
+			<value id="users">
+				<ru descr="Пользователи"/>
+			</value>
+		</enum>	
+		
 	</enums>
 	
 	<modules>
 	</modules>
 	
 	<models limitConstant="doc_per_page_count">
+		<model cmd="add" id="TimeZoneLocale" parent="ModelSQL" dataTable="time_zone_locales" virtual="FALSE">
+			<field id="id" dataType="Int" primaryKey="TRUE" autoInc="TRUE" required="TRUE" alias="Код" />
+			<field id="descr" dataType="String" required="TRUE" length="100" />
+			<field id="name" dataType="String" required="TRUE" length="50" />
+			<field id="hour_dif" dataType="Float" length="5" precision="1" required="TRUE" />
+		</model>
+	
 		<model cmd="add" id="User" parent="ModelSQL" dataTable="users" virtual="FALSE">
 			<defaultOrder>
 				<field id="name"/>
@@ -35,20 +48,81 @@
 			<field id="role_id" dataType="Enum" enumId="role_types" required="TRUE"/>
 			<field id="email" dataType="String" required="FALSE" length="50"/>
 			<field id="pwd" dataType="Password" length="32"/>
+			<field id="create_dt" dataType="DateTimeTZ" defaultValue="CURRENT_TIMESTAMP" />
+			<field id="banned" dataType="Bool" defaultValue="FALSE" />
+			<field id="time_zone_locale_id" dataType="Int" refTable="time_zone_locales" refField="id" />			
+			<field id="phone_cel" dataType="String" length="15" />
+			<field id="tel_ext" dataType="String" length="5" />
+			<field id="locale_id" dataType="Enum" enumId="locales" />
+			<field id="email_confirmed" dataType="Bool" alias="Адрес электр.почты подтвержден" defaultValue="FALSE" />
 			<index id="users_name_index">
 				<field id="name" unique="TRUE"/>
-			</index>			
+			</index>
+			<index unique="TRUE" id="users_email_idx">
+				<expression>lower(email)</expression>
+			</index>
+			<index id="users_role_id_idx">
+				<field id="role_id" />
+			</index>						
 		</model>
 		<model cmd="add" id="UserList" parent="ModelSQL" dataTable="users_list" virtual="TRUE">
 			<field id="id" dataType="Int" primaryKey="TRUE"/>
 			<field id="name" dataType="String"/>
-			<field id="email" dataType="String" required="FALSE" length="50"/>
+			<field id="role_id" dataType="Enum" enumId="role_types" />
+			<field id="phone_cel" dataType="String" />
+			<field id="tel_ext" dataType="String" />
+			<field id="email" dataType="String" />
 		</model>
-		<model cmd="add" id="UserDialog" parent="ModelSQL" dataTable="user_view" virtual="TRUE">
+		<model cmd="add" id="UserDialog" parent="ModelSQL" dataTable="users_profile" virtual="TRUE">
 			<field id="id" dataType="Int" primaryKey="TRUE" alias="Код"/>
 			<field id="name" dataType="String" alias="Имя"/>
 			<field id="email" dataType="String" alias="Эл.почта"/>
 			<field id="role_id" dataType="String"/>
+		</model>
+		<model cmd="add" id="Session" parent="ModelSQL" dataTable="sessions" virtual="FALSE">
+			<field id="id" dataType="String" length="128" primaryKey="TRUE" autoInc="FALSE" dbRequired="TRUE" />
+			<field id="set_time" dataType="DateTimeTZ" defaultValue="CURRENT_TIMESTAMP"/>
+			<field id="data" dataType="Text" />
+			<field id="session_key" dataType="String" length="128" />
+			<field id="pub_key" dataType="String" length="15" />
+			<field id="data_enc" dataType="Bytea" />
+			<index id="sessions_pub_key_idx">
+				<field id="pub_key" />
+			</index>			
+			<index id="sessions_set_time_idx">
+				<field id="set_time" />
+			</index>
+		</model>
+		
+		<model cmd="add" id="Login" parent="ModelSQL" dataTable="logins" virtual="FALSE">
+			<field id="id" dataType="Int" primaryKey="TRUE" autoInc="TRUE" required="FALSE" />
+			<field id="date_time_in" dataType="DateTimeTZ" />
+			<field id="date_time_out" dataType="DateTimeTZ" />
+			<field id="ip" dataType="String" length="15" />
+			<field id="session_id" dataType="String" length="128" />
+			<field id="user_id" dataType="Int" />
+			<field id="pub_key" dataType="String" length="15" />
+			<field id="set_date_time" dataType="DateTimeTZ" />
+			<field id="headers" dataType="Text"/>
+			<index id="logins_session_idx">
+				<field id="session_id" />
+			</index>
+			<index id="logins_user_idx">
+				<field id="user_id" />
+			</index>
+			<index id="logins_pub_key_idx">
+				<field id="pub_key" />
+			</index>
+		</model>
+		<model id="LoginList" parent="ModelSQL" dataTable="logins_list" virtual="TRUE">
+			<field id="id" dataType="Int" primaryKey="TRUE" autoInc="TRUE" required="FALSE" sysCol="TRUE" />
+			<field id="date_time_in" dataType="DateTimeTZ" alias="Дата входа" />
+			<field id="date_time_out" dataType="DateTimeTZ" alias="Дата выхода" />
+			<field id="ip" dataType="String" length="15" alias="IP адрес" />
+			<field id="user_id" dataType="Int" sysCol="TRUE" />
+			<field id="users_ref" dataType="JSON" alias="Пользователь" />
+			<field id="pub_key" dataType="String" length="15" sysCol="TRUE" />
+			<field id="set_date_time" dataType="DateTimeTZ" alias="Время последнего обращения" />
 		</model>
 	
 		<model cmd="add" id="ConstantList" parent="ModelSQL" dataTable="constants_list_view" virtual="TRUE">
@@ -76,7 +150,7 @@
 			<field id="t" dataType="Text"/>			
 			<field id="section" dataType="Text" required="TRUE"/>
 			<field id="descr" dataType="Text" required="TRUE"/>
-			<field id="limited" dataType="bool"/>
+			<field id="limited" dataType="Bool"/>
 			<index id="views_section_descr_idx" unique="TRUE">
 				<field id="section"/>
 				<field id="descr"/>
@@ -120,6 +194,15 @@
 			<field id="user_descr" dataType="String"/>
 			<field id="content" dataType="Text"/>
 		</model>
+		<model cmd="add" id="MainMenuConstructorDialog" parent="ModelSQL" dataTable="main_menus_dialog" virtual="TRUE">
+			<field id="id" dataType="Int" primaryKey="TRUE" sysCol="TRUE" />
+			<field id="role_id" dataType="String" />
+			<field id="role_descr" dataType="String" />
+			<field id="user_id" dataType="String" />
+			<field id="user_descr" dataType="String" />
+			<field id="content" dataType="Text" />
+		</model>
+		
 		<model id="MainMenuContent" parentJS="ModelXMLTree" parent="Model" virtual="TRUE" server="FALSE">
 			<field id="id" dataType="Int" primaryKey="TRUE" autoInc="TRUE"/>
 			<field id="descr" dataType="String"/>
@@ -130,17 +213,23 @@
 		</model>
 			
 		<model cmd="add" id="VariantStorage" parent="ModelSQL" dataTable="variant_storages" virtual="FALSE">
-			<field id="user_id" dataType="Int" refTable="users" refField="id" primaryKey="TRUE" required="TRUE"/>
-			<field id="storage_name" dataType="Text" primaryKey="TRUE" required="TRUE"/>
-			<field id="variant_name" dataType="Text" primaryKey="TRUE" required="TRUE"/>
-			<field id="default_variant" dataType="Bool"/>
-			<field id="filter_data" dataType="Text"/>
-			<field id="col_visib_data" dataType="Text"/>
-			<field id="col_order_data" dataType="Text"/>
+			<field id="id" dataType="Int" primaryKey="TRUE" required="TRUE" autoInc="TRUE" />
+			<field id="user_id" dataType="Int" refTable="users" refField="id" />
+			<field id="storage_name" dataType="Text" required="TRUE" />
+			<field id="variant_name" dataType="Text" required="TRUE" />
+			<field id="default_variant" dataType="Bool" />
+			<field id="filter_data" dataType="JSONB" />
+			<field id="col_visib_data" dataType="Text" />
+			<field id="col_order_data" dataType="Text" />
+			<index id="variant_storages_user_idx" unique="TRUE">
+				<field id="user_id" />
+				<field id="storage_name" />
+			</index>
 		</model>
 		<model cmd="add" id="VariantStorageList" parent="ModelSQL" dataTable="variant_storages_list" virtual="TRUE">
-			<field id="user_id" dataType="Int" refTable="users" refField="id" primaryKey="TRUE" required="TRUE"/>
-			<field id="storage_name" dataType="Text" primaryKey="TRUE" required="TRUE"/>
+			<field id="id" dataType="Int" primaryKey="TRUE"/>
+			<field id="user_id" dataType="Int" refTable="users" refField="id" />
+			<field id="storage_name" dataType="Text"/>
 			<field id="default_variant" dataType="Bool"/>
 			<field id="variant_name" dataType="Text"/>
 		</model>
@@ -159,7 +248,7 @@
 	<constants cmd="add" >
 		<constant cmd="add" id="doc_per_page_count" name="Количество документов на странице" descr="Количество документов на странице в журнале документов" dataType="Int" defaultValue="60" autoload="TRUE"/>
 		<constant cmd="add" id="grid_refresh_interval" name="Период обновления таблиц" descr="Период обновления таблиц в секундах" dataType="Int" defaultValue="15" autoload="TRUE"/>
-		<constant cmd="add" id="session_live_time" name="Время жизни сессии" descr="Время, в течении которого сессия не будет удаляться на сервере" dataType="Interval" defaultValue="48:00" viewOptions="{'dateFormat':'H:i'}" ctrlOptions="{'editMask':'99:99'}"/>
+		<constant cmd="add" id="session_live_time" name="Время жизни сессии" descr="Время, в течении которого сессия не будет удаляться на сервере" dataType="Interval" defaultValue="48:00" viewOptions="{&quot;dateFormat&quot;:&quot;H:i&quot;}" ctrlOptions="{&quot;editMask&quot;:&quot;99:99&quot;}"/>
 	</constants>
 	
 	<controllers>	
@@ -185,7 +274,7 @@
 			<publicMethod id="update" modelId="MainMenuConstructor"/>
 			<publicMethod id="delete" modelId="MainMenuConstructor"/>
 			<publicMethod id="get_list" modelId="MainMenuConstructorList"/>
-			<publicMethod id="get_object" modelId="MainMenuConstructor"/>
+			<publicMethod id="get_object" modelId="MainMenuConstructorDialog"/>
 		</controller>
 		<controller id="MainMenuContent" parentIdJS="ControllerObjClient" server="FALSE">
 			<publicMethod id="insert" modelId="MainMenuContent"/>
@@ -259,6 +348,7 @@
 			<publicMethod id="login">
 				<field id="name" dataType="String" alias="Имя пользователя" length="50" required="TRUE"/>
 				<field id="pwd" dataType="Password" alias="Пароль" length="20" required="TRUE"/>
+				<field id="width_type" dataType="String" length="2" />
 			</publicMethod>
 			<publicMethod id="login_refresh">
 				<field id="refresh_token" dataType="String" required="true" length="50"/>
@@ -266,6 +356,10 @@
 			<publicMethod id="logout"/>
 			<publicMethod id="logout_html"/>
 		</controller>	
+		<controller id="Login" parentId="ControllerSQL" state="TRUE" noState="TRUE">
+			<publicMethod id="get_list" modelId="LoginList" />
+			<publicMethod id="get_object" modelId="LoginList" />
+		</controller>
 		
 	</controllers>
 	
@@ -289,6 +383,9 @@
 	</serverTemplates>
 	
 	<jsTemplates>
+		<jsTemplate id="FatalException" file="tmpl/FatalException.html" />
+		<jsTemplate id="DbException" file="tmpl/DbException.html" />
+		<jsTemplate id="VersException" file="tmpl/VersException.html" />
 		<jsTemplate id="GridCmdContainerAjx" file="controls/tmpl/GridCmdContainerAjx.html"/>
 		<jsTemplate id="ViewGridColManager" file="controls/tmpl/ViewGridColManager.html"/>
 		<jsTemplate id="PopOver" file="controls/tmpl/PopOver.html"/>
@@ -304,11 +401,14 @@
 	</packages>
 	
 	<sqlScripts>
-		<sqlScript cmd="add" file="logins_process.sql"/>
+		<sqlScript cmd="add" file="sess_enc_read.sql" />
+		<sqlScript cmd="add" file="sess_enc_write.sql" />
+		<sqlScript cmd="add" file="sess_gc.sql" />
 		<sqlScript cmd="add" file="variant_storages_upsert_col_order_data.sql"/>
 		<sqlScript cmd="add" file="variant_storages_upsert_col_visib_data.sql"/>
 		<sqlScript cmd="add" file="variant_storages_upsert_filter_data.sql"/>
-		<sqlScript cmd="add" file="variant_storages_list.sql"/>
+		<sqlScript cmd="add" file="users_view.sql" />
+		<sqlScript cmd="add" file="init_db.sql" />
 	</sqlScripts>
 	
 	<jsScripts>
@@ -340,8 +440,12 @@
 		<jsScript file="core/DOMHelper.js"/>
 		<jsScript file="core/DateHelper.js"/>
 		<jsScript file="core/EventHelper.js"/>		
+		<jsScript file="core/FatalException.js" />
+		<jsScript file="core/DbException.js" />
+		<jsScript file="core/VersException.js" />		
 		<jsScript file="core/ConstantManager.js"/>
 		
+		<jsScript file="core/CookieManager.js" />
 		<jsScript file="core/ServConnector.js"/>
 		<jsScript file="core/Response.js"/>
 		<jsScript file="core/ResponseXML.js"/>
@@ -393,6 +497,7 @@
 		<jsScript file="core/FieldText.js"/>
 		<jsScript file="core/FieldInterval.js"/>
 		<jsScript file="core/FieldJSON.js"/>
+		<jsScript file="core/FieldJSONB.js" />
 		<jsScript file="core/FieldArray.js"/>
 		<jsScript file="core/ModelFilter.js"/>
 		<jsScript file="core/RefType.js"/>		
@@ -412,6 +517,7 @@
 		<jsScript file="controls/View.js"/>
 		<jsScript file="controls/ViewAjx.js"/>
 		<jsScript file="controls/rs/ViewAjx.rs_{{LOCALE}}.js" resource="{{LOCALE}}"/>
+		<jsScript file="controls/ViewAjxList.js"/>
 		<jsScript file="controls/ErrorControl.js"/>
 		<jsScript file="controls/Calculator.js"/>
 		<jsScript file="controls/rs/Calculator.rs_{{LOCALE}}.js" resource="{{LOCALE}}"/>
@@ -440,6 +546,10 @@
 		<jsScript file="controls/rs/ButtonPrintList.rs_{{LOCALE}}.js" resource="{{LOCALE}}"/>
 		<jsScript file="controls/ButtonSelectRef.js"/>
 		<jsScript file="controls/rs/ButtonSelectRef.rs_{{LOCALE}}.js" resource="{{LOCALE}}"/>
+		<jsScript file="controls/ButtonSelectDataType.js"/>
+		<jsScript file="controls/rs/ButtonSelectDataType.rs_{{LOCALE}}.js" resource="{{LOCALE}}"/>
+		<jsScript file="controls/ButtonMakeSelection.js"/>
+		<jsScript file="controls/rs/ButtonMakeSelection.rs_{{LOCALE}}.js" resource="{{LOCALE}}"/>
 		
 		<jsScript file="controls/ButtonToggle.js"/>		
 		
@@ -450,6 +560,7 @@
 		<jsScript file="controls/EditRef.js"/>
 		<jsScript file="controls/EditString.js"/>
 		<jsScript file="controls/EditText.js"/>
+		<jsScript file="controls/EditNum.js"/>
 		<jsScript file="controls/EditInt.js"/>
 		<jsScript file="controls/EditFloat.js"/>
 		<jsScript file="controls/EditMoney.js"/>
@@ -477,9 +588,8 @@
 		<jsScript file="controls/ControlForm.js"/>
 		<jsScript file="controls/HiddenKey.js"/>
 		<jsScript file="controls/EditJSON.js" />
-		<jsScript file="controls/EditBankAcc.js" />
 		<jsScript file="controls/EditModalDialog.js" />
-		<jsScript file="controls/rs/EditModalDialog.rs_ru.js" resource="ru" />				
+		<jsScript file="controls/rs/EditModalDialog.rs_{{LOCALE}}.js" resource="{{LOCALE}}" />				
 		
 		<jsScript file="controls/GridColumn.js"/>
 		<jsScript file="controls/GridColumnBool.js"/>
@@ -493,13 +603,19 @@
 		<jsScript file="controls/GridCell.js"/>
 		<jsScript file="controls/GridCellHead.js"/>
 		<jsScript file="controls/GridCellFoot.js"/>
+		<jsScript file="controls/GridCellPhone.js" />
+		<jsScript file="controls/rs/GridCellPhone.rs_{{LOCALE}}.js" resource="{{LOCALE}}" />
+		<jsScript file="controls/GridCellDetailToggle.js" />
+		<jsScript file="controls/rs/GridCellDetailToggle.rs_{{LOCALE}}.js" resource="{{LOCALE}}" />
 		<jsScript file="controls/GridHead.js"/>
 		<jsScript file="controls/GridRow.js"/>
 		<jsScript file="controls/GridFoot.js"/>
 		<jsScript file="controls/GridBody.js"/>
 		<jsScript file="controls/Grid.js"/>
 		<jsScript file="controls/rs/Grid.rs_{{LOCALE}}.js" resource="{{LOCALE}}"/>		
-		
+		<jsScript file="controls/GridSearchInf.js" />
+		<jsScript file="controls/rs/GridSearchInf.rs_{{LOCALE}}.js" resource="{{LOCALE}}" />
+		<jsScript file="controls/VariantStorage.js" />
 		<jsScript file="controls/GridCommands.js"/>
 		<jsScript file="controls/GridCmd.js"/>
 		<jsScript file="controls/GridCmdContainer.js"/>
@@ -606,6 +722,7 @@
 		<jsScript file="controls/WindowFormModalBS.js"/>
 		<jsScript file="controls/rs/WindowFormModalBS.rs_{{LOCALE}}.js" resource="{{LOCALE}}"/>		
 		<jsScript file="controls/WindowMessage.js"/>
+		<jsScript file="controls/WindowTempMessage.js"/>
 		
 		<jsScript file="controls/GridCellHeadDOCProcessed.js"/>
 		<jsScript file="controls/GridCellHeadDOCDate.js"/>
@@ -654,12 +771,14 @@
 		<jsScript file="controllers/User_Controller.js"/>
 		
 		<!-- **** Views *** -->
-		<jsScript file="views/Login_View.js"/>
+		<jsScript file="views/Login_View.js"/>		
 		<jsScript file="views/MainMenuConstructorList_View.js"/>
 		<jsScript file="views/MainMenuConstructor_View.js"/>		
 		<jsScript file="views/ViewList_View.js"/>						
 		<jsScript file="views/About_View.js"/>		
 		<jsScript file="views/ConstantList_View.js"/>
+		<jsScript file="views/ProjectManager_View.js" />
+		<jsScript file="views/LoginList_View.js" />
 				
 		<jsScript file="views/UserList_View.js"/>
 		<jsScript file="views/UserDialog_View.js"/>
@@ -667,32 +786,53 @@
 				
 		<jsScript file="tmpl/App.templates.js" compressed="FALSE" standalone="FALSE"/>
 		
-		<jsScript file="custom_controls/App{{APP_NAME}}.js"/>
+		<jsScript file="custom_controls/App_{{APP_NAME}}.js"/>
 		
-		<jsScript file="custom_controls/AppCustom.js"/>
 		<jsScript file="custom_controls/ViewSectionSelect.js"/>
 		<jsScript file="custom_controls/ViewEditRef.js"/>
+		<!-->
 		<jsScript file="custom_controls/DOCCommands.js"/>
 		<jsScript file="custom_controls/DOCNumberEdit.js"/>
 		<jsScript file="custom_controls/DOCDateEdit.js"/>
-		<jsScript file="custom_controls/UserNameEdit.js"/>
+		-->
+		<jsScript file="custom_controls/UserNameEdit.js"/>		
 		<jsScript file="custom_controls/UserEditRef.js"/>
 
 		<jsScript file="custom_controls/rs_common_{{LOCALE}}.js"/>		
 		<jsScript file="custom_controls/rs_{{LOCALE}}.js" resource="{{LOCALE}}"/>
+		
+		<jsScript file="models/TimeZoneLocale_Model.js" />
+		<jsScript file="models/User_Model.js" />
+		<jsScript file="models/UserList_Model.js" />
+		<jsScript file="models/UserDialog_Model.js" />
+		<jsScript file="models/Session_Model.js" />
+		<jsScript file="models/Login_Model.js" />
+		<jsScript file="models/LoginList_Model.js" />
+		<jsScript file="models/ConstantList_Model.js" />
+		<jsScript file="models/View_Model.js" />
+		<jsScript file="models/ViewList_Model.js" />
+		<jsScript file="models/ViewSectionList_Model.js" />
+		<jsScript file="models/MainMenuConstructor_Model.js" />
+		<jsScript file="models/MainMenuConstructorList_Model.js" />
+		<jsScript file="models/MainMenuConstructorDialog_Model.js" />
+		<jsScript file="models/MainMenuContent_Model.js" />
+		<jsScript file="models/VariantStorage_Model.js" />
+		<jsScript file="models/VariantStorageList_Model.js" />
+		<jsScript file="models/About_Model.js" />
 		
 		<jsScript file="views/rs_{{LOCALE}}.js"/>
 		<jsScript file="views/rs_common_{{LOCALE}}.js" resource="{{LOCALE}}"/>
 	</jsScripts>
 	
 	<cssScripts>
-		<cssScript file="ext/bootstrap-datepicker/bootstrap-datepicker.standalone.min.css" compressed="TRUE" standalone="TRUE"/>		
-		<cssScript file="ext/startbootstrap-sb-admin-2-1.0.8/bower_components/bootstrap/dist/css/bootstrap.min.css" compressed="TRUE" standalone="TRUE"/>
-		<cssScript file="ext/startbootstrap-sb-admin-2-1.0.8/bower_components/metisMenu/dist/metisMenu.min.css" standalone="TRUE"/>
-		<cssScript file="ext/startbootstrap-sb-admin-2-1.0.8/dist/css/timeline.css" standalone="TRUE"/>
-		<cssScript file="ext/startbootstrap-sb-admin-2-1.0.8/dist/css/sb-admin-2.css" standalone="TRUE"/>
-		<cssScript file="ext/startbootstrap-sb-admin-2-1.0.8/bower_components/morrisjs/morris.css" standalone="TRUE"/>		
-		<cssScript file="ext/startbootstrap-sb-admin-2-1.0.8/bower_components/font-awesome/css/font-awesome.min.css" compressed="TRUE" standalone="TRUE"/>						
-		<cssScript file="custom-css/style.css" standalone="TRUE"/>
+		<cssScript file="ext/Limitless v1.4/layout_1/LTR/default/assets/css/icons/icomoon/styles.css" compressed="TRUE" standalone="TRUE" />
+		<cssScript file="ext/Limitless v1.4/layout_1/LTR/default/assets/css/bootstrap.css" compressed="FALSE" standalone="TRUE" />
+		<cssScript file="ext/Limitless v1.4/layout_1/LTR/default/assets/css/core.min.css" compressed="TRUE" standalone="TRUE" />
+		<cssScript file="ext/Limitless v1.4/layout_1/LTR/default/assets/css/components.min.css" compressed="TRUE" standalone="TRUE" />
+		<cssScript file="ext/Limitless v1.4/layout_1/LTR/default/assets/css/colors.min.css" compressed="TRUE" standalone="TRUE" />
+		<cssScript file="ext/Limitless v1.4/layout_1/LTR/default/assets/css/icons/fontawesome/styles.min.css" compressed="TRUE" standalone="TRUE" />
+		<cssScript file="ext/bootstrap-datepicker/bootstrap-datepicker.standalone.min.css" compressed="TRUE" standalone="TRUE" />
+		<cssScript file="custom-css/style.css" standalone="TRUE" />
+		<cssScript file="custom-css/print.css" standalone="TRUE" />
 	</cssScripts>	
 </metadata>

@@ -1,0 +1,14 @@
+-- View: users_profile
+
+-- DROP VIEW users_profile;
+
+CREATE OR REPLACE VIEW users_profile AS 
+	SELECT
+	 	u.id
+	 	,u.name
+	 	,u.email
+	 	,u.role_id
+ 	FROM users AS u
+	;
+ALTER TABLE users_profile OWNER TO ;
+

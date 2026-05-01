@@ -9,8 +9,8 @@
 <xsl:template match="controller"><![CDATA[<?php]]>
 require_once('<xsl:value-of select="@id"/>_Controller.php');
 class <xsl:value-of select="@id"/>_Controller_html extends <xsl:value-of select="@id"/>_Controller{
-	public function __construct($dbLinkMaster=NULL){
-		parent::__construct($dbLinkMaster);		
+	public function __construct($dbLinkMaster=NULL,$dbLink=NULL){
+		parent::__construct($dbLinkMaster,$dbLink);		
 		$this->setStatelessClient(TRUE);
 
 	}

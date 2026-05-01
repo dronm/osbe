@@ -1,20 +1,34 @@
-<div id="{{id}}" class="form-group {{bsCol}}12">
-	<a class="{{bsCol}}1" id="{{id}}:periodSelect"></a>	
-	
+<div id="{{id}}" class="form-group-filter {{bsCol}}12">
+	{{#LABEL}}
+	<lable id="{{id}}:label" class="control-label {{bsCol}}4">{{LABEL}}
+	</lable>
+	{{/LABEL}}
+
+	{{#PERIOD_SELECT}}
+	<a class="{{bsCol}}2" id="{{id}}:periodSelect"></a>	
+	{{/PERIOD_SELECT}}
+		
+	{{#DOWN}}
 	<div class="btn-group {{bsCol}}2">
+		{{#DOWN_FAST}}
 		<div id="{{id}}:downFast" title="{{CONTR_DOWN_FAST_TITLE}}"></div>
+		{{/DOWN_FAST}}
 		<div id="{{id}}:down" title="{{CONTR_DOWN_TITLE}}"></div>
 	</div>
+	{{/DOWN}}
 	
-	<div id="{{id}}:d-cont" class="{{bsCol}}7" style="padding-right:0px;padding-left:0px;">
+	<div id="{{id}}:d-cont" class="{{bsCol}}6" style="padding-right:0px;padding-left:0px;">
 		<div id="{{id}}:from" class="{{bsCol}}6" style="padding:0px 20px 0px 0px;"></div>
 		<!--<span class="{{bsCol}}1" style="padding-left:0px;padding-right:0px">-</span>-->
 		<div id="{{id}}:to" class="{{bsCol}}6" style="padding:0px 0px;margin:0px 0px;"></div>	
 	</div>
 	
-	<div class="btn-group {{bsCol}}2">
-		<div id="{{id}}:upFast" title="{{CONTR_UP_FAST_TITLE}}"></div>
+	{{#UP}}
+	<div class="btn-group {{bsCol}}2">			
 		<div id="{{id}}:up" title="{{CONTR_UP_TITLE}}"></div>
+		{{#UP_FAST}}
+		<div id="{{id}}:upFast" title="{{CONTR_UP_FAST_TITLE}}"></div>
+		{{/UP_FAST}}
 	</div>
-	
+	{{/UP}}
 </div>

@@ -76,7 +76,7 @@ Model.prototype.fetchRow = function(){
 						}
 					}
 				}
-				this.m_fields[id].setValue(t_val);
+				if(this.m_fields[id])this.m_fields[id].setValue(t_val);
 			}
 		}
 		this.m_flagCleared = false;

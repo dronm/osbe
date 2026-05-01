@@ -9,18 +9,18 @@
 <xsl:strip-space elements="*"/>
 
 <!-- Main template-->
-<xsl:template match="/">{<xsl:apply-templates select="document/model"/>}
+<xsl:template match="/">{"models":{<xsl:apply-templates select="document/model"/>}}
 </xsl:template>
 
 <!-- table -->
-<xsl:template match="model"><xsl:if test="position() &gt; 1">,</xsl:if>"<xsl:value-of select="@id"/>":{"rows":[<xsl:apply-templates/>],"rowCount":"<xsl:value-of select="@totalCount"/>"}
+<xsl:template match="model"><xsl:if test="position() &gt; 1">,</xsl:if>"<xsl:value-of select="@id"/>":{"rows":[<xsl:apply-templates/>]<xsl:if test="@totalCount &gt;0">,"totalCount":"<xsl:value-of select="@totalCount"/>"</xsl:if><xsl:if test="@rowsPerPage &gt;0">,"rowsPerPage":"<xsl:value-of select="@rowsPerPage"/>"</xsl:if>}
 </xsl:template>
 
 <xsl:template match="row">{<xsl:apply-templates/>}<xsl:if test="count(following-sibling::*) &gt; 0">,</xsl:if></xsl:template>
 
 <xsl:template match="row/*">"<xsl:value-of select="local-name()"/>":<xsl:call-template name="escape-string">
-      <xsl:with-param name="s" select="node()"/>
-    </xsl:call-template><xsl:if test="count(following-sibling::*) &gt; 0">,</xsl:if></xsl:template>
+	<xsl:with-param name="s" select="node()"/>
+	</xsl:call-template><xsl:if test="count(following-sibling::*) &gt; 0">,</xsl:if></xsl:template>
 
   <!-- Main template for escaping strings; used by above template and for object-properties 
        Responsibilities: placed quotes around string, and chain up to next filter, escape-bs-string -->

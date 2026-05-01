@@ -24,10 +24,27 @@ ValidatorFloat.prototype.validate = function(v){
 }
 */
 
-ValidatorFloat.prototype.correctValue = function(v){		
-	var sep = CommonHelper.getDecimalSeparator();
-	if (sep!="."){
-		v = String(v).replace(sep,".");
-	}
+ValidatorFloat.prototype.toNumber = function(v){
 	return parseFloat(v);
+}
+
+ValidatorFloat.prototype.correctValue = function(v){	
+	var this_dig_sep;
+	var v_str = String(v);
+	//possable separators: . AND ,
+	if(v_str.indexOf(".")>=0){
+		this_dig_sep = ".";	
+	}
+	else if(v_str.indexOf(",")>=0){
+		this_dig_sep = ",";	
+	}
+	if(this_dig_sep){
+		var js_sep = ".";//CommonHelper.getDecimalSeparator();	
+		//change this digit decimal separator to js decimal separator
+		if (js_sep!=this_dig_sep){
+			v = v_str.replace(this_dig_sep,js_sep);
+		}
+	}
+		
+	return this.toNumber(v);
 }

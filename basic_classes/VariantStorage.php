@@ -1,16 +1,33 @@
 <?php
+
+require_once(FRAME_WORK_PATH.'basic_classes/ModelWhereSQL.php');
+require_once(FRAME_WORK_PATH.'basic_classes/FieldSQLString.php');
+
 class VariantStorage{
+
 	static public function save($tmpl,$val){
 		$_SESSION['vstor'.$tmpl] = serialize($val);
 	}
-	static public function restore($tmpl){
-		return (isset($_SESSION['vstor'.$tmpl]))? unserialize($_SESSION['vstor'.$tmpl]):NULL;
+	
+	static public function restore($tmpl,$link){		
+		$storage = NULL;
+		if (isset($_SESSION['vstor'.$tmpl])){
+			$storage = unserialize($_SESSION['vstor'.$tmpl]);
+		}
+		else{
+			$storage = self::getDefaultStorageForTemplate($tmpl,$link);
+			self::save($tmpl,$storage);
+		}
+		
+		self::applyPredefinedPeriodValues($storage,$tmpl);
+		
+		return $storage;
 	}	
 	static public function clear($tmpl){
 		unset($_SESSION['vstor'.$tmpl]);
 	}		
 	
-	static private function field_to_where($fId,$sign,$fIcase,$fVal,&$model,&$modelWhere){
+	static protected function field_to_where($fId,$sign,$fIcase,$fVal,&$model,&$modelWhere){
 		$COND_FIELD_MULTY_VAL_SEP = ';';
 		
 		$field = clone $model->getFieldById($fId);
@@ -46,6 +63,9 @@ class VariantStorage{
 		}
 		
 		//if ($field->getValue()!='null'){
+		if (is_null($modelWhere)){
+			$modelWhere = new ModelWhereSQL();
+		}		
 		$modelWhere->addField($field, $sign, NULL, $fIcase);
 		//}		
 	}
@@ -54,7 +74,7 @@ class VariantStorage{
 	 * like shift for example
 	 */
 	static protected function getPredefinedPeriodValue($period,$val,$isFrom){
-		$res;
+		$res = NULL;
 		if ($period=='all'){
 			return $val;
 		}
@@ -120,17 +140,26 @@ class VariantStorage{
 				$res = mktime(23,59,59,12,31,$dt['year']);
 			}
 		}
-		return date('Y-m-d H:i:s',$res);								
+		return $res? date('Y-m-d H:i:s',$res) : null;
 	}
 	
-	static public function applyFilters($filterData,&$model,&$modelWhere){
+	/**
+	 * Applies filter from storage to modelWhere
+	 * sets predefined periods to current values
+	 */
+	static public function applyFilters(&$storage,&$model,&$modelWhere,$template){
 		/**
 		 * @toDo merge with ControllerSQL->conditionFromParams		 
 		 */	
+		if(!isset($storage)||!isset($storage['filter_data'])){
+			return;
+		}
+		 
 		$sgn_keys_ar = explode(',',COND_SIGN_KEYS);
 		$sgn_ar = explode(',',COND_SIGNS);		
 	
-		$filter_data = json_decode($filterData,TRUE);
+		$data_modif = FALSE;
+		$filter_data = json_decode($storage['filter_data'],TRUE);
 		foreach($filter_data as $filter_fld){
 			if (isset($filter_fld['field'])){
 				//ordinary control, simple or reference
@@ -175,8 +204,12 @@ class VariantStorage{
 						if (isset($filter_fld['bindings'][$k]['field'])){
 							$ind = array_search($filter_fld['bindings'][$k]['sign'],$sgn_keys_ar);
 							if ($ind>=0){
-								$val = self::getPredefinedPeriodValue($filter_fld['value']['period'],trim($filter_fld['bindings'][$k]['value']),($k==0));
-								self::field_to_where($filter_fld['bindings'][$k]['field'],$sgn_ar[$ind],FALSE,$val,$model,$modelWhere);
+								$per_val = '';								
+								if($filter_fld['value']['period']!="all"){
+									$data_modif = TRUE;
+									$filter_fld['bindings'][$k]['value'] = self::getPredefinedPeriodValue($filter_fld['value']['period'],trim($filter_fld['bindings'][$k]['value']),($k==0));
+								}
+								self::field_to_where($filter_fld['bindings'][$k]['field'],$sgn_ar[$ind],FALSE,$filter_fld['bindings'][$k]['value'],$model,$modelWhere);
 							}						
 						}					
 					}
@@ -216,9 +249,74 @@ class VariantStorage{
 				}
 			}
 		}
-	
 	}		
 	
+	public static function getDefaultStorageForTemplate($tmpl,$link){
+		$tmpl_for_db = "";
+		FieldSQLString::formatForDb($link,$tmpl,$tmpl_for_db);
+
+		$varq = sprintf(
+			"SELECT sub.* 
+			FROM (
+				(SELECT
+					filter_data,
+					col_visib_data,
+					col_order_data,
+					1 AS prior
+				FROM variant_storages
+				WHERE user_id=%d AND storage_name=%s AND default_variant=TRUE)
+				UNION ALL
+				(SELECT
+					filter_data,
+					col_visib_data,
+					col_order_data,
+					0 AS prior
+				FROM variant_storages
+				WHERE user_id IS NULL AND storage_name=%s AND default_variant=TRUE)		
+			) AS sub
+			ORDER BY prior DESC
+			LIMIT 1",
+		(isset($_SESSION['user_id']))? $_SESSION['user_id']:0,
+		$tmpl_for_db,$tmpl_for_db
+		);				
+		$stvar = $link->query_first($varq);
+		//file_put_contents(OUTPUT_PATH.'stvar.txt',$stvar);
+		return $stvar;
+	}
+	
+	static public function applyPredefinedPeriodValues(&$storage,$template){	
+		$data_modif = FALSE;
+		$filter_data = (isset($storage['filter_data'])&&gettype($storage['filter_data'])=='string')? json_decode($storage['filter_data'],TRUE):NULL;
+		if(!$filter_data)return;
+		$sgn_keys_ar = explode(',',COND_SIGN_KEYS);
+		foreach($filter_data as &$filter_fld){
+			if (!isset($filter_fld['field'])){
+				/** complex control like period
+				 * {value:string,bindings:[{field,sign,value}]}
+				 */
+				if (is_array($filter_fld['value']) && isset($filter_fld['value']['period'])){
+					//period control with predefined periods
+					//0 - date_from, 1 - date_to
+					for($k=0;$k<=1;$k++){
+						if (isset($filter_fld['bindings'][$k]['field'])){
+							$ind = array_search($filter_fld['bindings'][$k]['sign'],$sgn_keys_ar);
+							if ($ind>=0){
+								$per_val = '';								
+								if($filter_fld['value']['period']!="all"){
+									$data_modif = TRUE;
+									$filter_fld['bindings'][$k]['value'] = self::getPredefinedPeriodValue($filter_fld['value']['period'],trim($filter_fld['bindings'][$k]['value']),($k==0));
+								}
+							}						
+						}					
+					}
+				}
+			}
+		}		
+		if ($data_modif){
+			$storage['filter_data'] = json_encode($filter_data);
+			self::save($template,$storage);
+		}			
+	}
 }
 
 ?>

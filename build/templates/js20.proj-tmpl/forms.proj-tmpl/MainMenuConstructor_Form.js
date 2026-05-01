@@ -15,6 +15,7 @@ function MainMenuConstructor_Form(options){
 	options = options || {};	
 	
 	options.formName = "MainMenuConstructor";
+	options.controller = "MainMenuConstructor_Controller";
 	options.method = "get_object";
 	
 	MainMenuConstructor_Form.superclass.constructor.call(this,options);

@@ -35,7 +35,15 @@ function GridCell(id,options){
 		
 		if (options.gridColumn.getField()){
 			options.attrs.fieldId = options.gridColumn.getField().getId();
-			options.value = options.gridColumn.getField().getValue();
+			var f_alias = options.gridColumn.getFieldAlias();
+			if(f_alias){
+				options.attrs["data-label"] = f_alias;
+			}
+			/*if(options.value!=undefined){
+				console.log("CellId="+id+" val="+options.value)
+				console.log(options.value)
+			}*/
+			options.value = (options.value!=undefined)? options.value : options.gridColumn.getField().getValue();
 		}
 	}
 
@@ -66,6 +74,8 @@ GridCell.prototype.DEF_TAG_NAME = "TD";
 GridCell.prototype.m_gridColumn;
 GridCell.prototype.m_value;
 
+GridCell.prototype.detailToggles;//m_gridColumn.getMaster()!
+
 /* Public */
 GridCell.prototype.setColSpan = function(v){
 	if (v) this.setAttr("colspan",v);
@@ -91,26 +101,28 @@ GridCell.prototype.getGridColumn = function(){
 }
 
 
-GridCell.prototype.setValue = function(val){
-	this.m_value = val;
-
+GridCell.prototype.formatValue = function(val){
 	if (this.m_gridColumn){		
 
 		/* value definition priority:
+
 			- format function
 			- if there is one control inside, value is set to this control
 			- if there are several controls inside, value is NOT set
 			
+
 			Cell Value resolving
 				column.formatVal() is called first on any value
 				column.getFormat() - if given CommonHelper.format is applied
 				column.getMask() - if given masked input is used
 				getAssocClassList - if value matches some hash in the list (AssocClassList),
+
 							the list value associated with the hash is converted to a class
 				getAssocImageList - if value matches some hash in the list (AssocImageList),
 							the list value is treated as image source
 				getAssocValueList- if value matches some hash in the list (AssocValueList),
 							the list value is put to cell
+
 			
 		*/
 		
@@ -121,7 +133,7 @@ GridCell.prototype.setValue = function(val){
 		
 		var f_func = this.m_gridColumn.getFormatFunction();
 		if (f_func){			
-			val = f_func.call(this.m_gridColumn,this.m_gridColumn.getGrid().getModel().getFields());
+			val = f_func.call(this.m_gridColumn,this.m_gridColumn.getGrid().getModel().getFields(),this);
 		}
 		if (elem_cnt==1){			
 			//value to the first control
@@ -157,6 +169,7 @@ GridCell.prototype.setValue = function(val){
 			}
 		
 			else if (this.m_gridColumn.getAssocImageList()){
+
 				var img = this.m_gridColumn.getAssocImageList()[val];
 				if (img){
 					this.addElement(new Control(this.getId()+":assoc-img","img",{
@@ -167,14 +180,60 @@ GridCell.prototype.setValue = function(val){
 			}
 			else if (this.m_gridColumn.getAssocValueList()){
 				val = (val===null || val=="")? "null":val;
+				//console.log("val="+val)
 				val = this.m_gridColumn.getAssocValueList()[val];
-			}		
+			}
+			else if (val && this.m_gridColumn.getAssocIndex()){
+				var v = this.m_gridColumn.getAssocIndex();
+				//console.log("v="+v+" val="+val[v])
+				val = val[v];
+			}
 		}
 	}
+	return val;
+}
+
+GridCell.prototype.setValue = function(val){
+	this.m_value = val;
+	
+	val = this.formatValue(val);
 	
 	GridCell.superclass.setValue.call(this,val);	
 }
 
 GridCell.prototype.getValue = function(){
 	return this.m_value;
+}
+
+GridCell.prototype.getFormattedValue = function(){
+	return this.formatValue(this.m_value);
+}
+
+GridCell.prototype.toDOM = function(parent){
+	GridCell.superclass.toDOM.call(this,parent);
+	
+	//master-detail
+	if(this.m_gridColumn&&this.m_gridColumn.getMaster()){
+		this.m_detailToggle = new GridCellDetailToggle(this.getId()+":det_toggle",{
+			"gridCell":this,
+			"detailViewClass":this.m_gridColumn.getDetailViewClass(),
+			"detailViewOptions":this.m_gridColumn.getDetailViewOptions()
+		});
+		if(this.getNode()&&this.getNode().firstChild)
+			this.m_detailToggle.toDOMBefore(this.getNode().firstChild);
+	}
+}
+
+GridCell.prototype.delDOM = function(){
+	//master-detail
+	if(this.m_detailToggl){		
+		this.m_detailToggle.delDOM();
+		delete this.m_detailToggle;	
+	}
+
+	GridCell.superclass.delDOM.call(this);
+}
+
+GridCell.prototype.getDetailToggle = function(){
+	return this.m_detailToggle;
 }

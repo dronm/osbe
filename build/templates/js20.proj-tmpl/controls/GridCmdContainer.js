@@ -8,7 +8,7 @@
  * @requires controls/GridCmdContainer.js
 
  * @param {string} id Object identifier
- * @param {namespace} options
+ * @param {object} options
  * @param {bool|GridCmd} [options.cmdInsert=true]
  * @param {bool|GridCmd} [options.cmdEdit=true]
  * @param {bool|GridCmd} [options.cmdCopy=false]
@@ -24,8 +24,9 @@
  * @param {bool|GridCmd} options.cmdFilter
  * @param {bool|GridCmd} options.cmdFilterSave
  * @param {bool|GridCmd} options.cmdFilterOpen  
- * @param {namespace} options.filters
- * @param {namespace} options.variantStorage  
+ * @param {object} options.filters
+ * @param {object} options.variantStorage
+ * @param {PopUpMenu} options.popUpMenu     
 */
 
 function GridCmdContainer(id,options){
@@ -42,7 +43,7 @@ function GridCmdContainer(id,options){
 	options.cmdPrint = (options.cmdPrint!=undefined)? options.cmdPrint:true;
 	options.cmdPrintObj = (options.printObjList!=undefined)? true:((options.cmdPrintObj!=undefined)? options.cmdPrintObj:false);
 	options.cmdSearch = (options.cmdSearch!=undefined)? options.cmdSearch:true;
-	options.cmdColManager = (options.cmdColManager!=undefined)? options.cmdColManager:true;
+	options.cmdColManager = (options.cmdColManager!=undefined)? options.cmdColManager:false;
 	options.cmdFilter = (options.cmdFilter!=undefined)? options.cmdFilter:(options.filters!=undefined);
 	options.cmdFilterSave = (options.cmdFilterSave!=undefined)? options.cmdFilterSave:(options.variantStorage!=undefined);
 	options.cmdFilterOpen = (options.cmdFilterOpen!=undefined)? options.cmdFilterOpen:(options.variantStorage!=undefined);
@@ -101,7 +102,7 @@ function GridCmdContainer(id,options){
 		this.setCmdColManager( (typeof(options.cmdColManager)=="object")?		
 			options.cmdColManager : new GridCmdColManager(id+":colManager",{
 				"filters":options.filters,
-				"variantStorageName":options.variantStorage.name,
+				"variantStorageName":options.variantStorage["name"],
 				"variantStorageModel":options.variantStorage.model
 			})
 		);		
@@ -135,7 +136,8 @@ function GridCmdContainer(id,options){
 	if (options.cmdSearch){		
 		this.setCmdSearch( (typeof(options.cmdSearch)=="object")?
 			options.cmdSearch : new GridCmdSearch(id+":search")
-		);		
+		);
+		//this.getCmdSearch().setFilterInfo(this.m_filterInfo);
 	}
 
 	//filter
@@ -165,7 +167,8 @@ function GridCmdContainer(id,options){
 				"controlOpen":this.getCmdFilterOpen(),
 				"variantStorage":options.variantStorage
 			})
-		);				
+		);
+		//this.getCmdFilter().setFilterInfo(this.m_filterInfo);				
 	}
 
 	//all commands
@@ -181,8 +184,30 @@ function GridCmdContainer(id,options){
 	if (options.addCustomCommands){
 		options.addCustomCommands.call(this,this.m_commands);
 	}
+	else if (options.addCustomCommandsBefore){
+		options.addCustomCommandsBefore.call(this,this.m_commands);
+	}
 	
 	this.addControls();
+
+	if (options.addCustomCommandsAfter){
+		var l = this.m_commands.length;
+		options.addCustomCommandsAfter.call(this,this.m_commands);
+		for(var i=l;i<this.m_commands.length;i++){			
+			if (this.m_commands[i].getShowCmdControl()){
+				this.m_commands[i].controlsToContainer(this);
+			}		
+		}
+	}
+	
+	//always last
+	if (this.m_cmdAllCommands){
+		this.m_commands.push(this.m_cmdAllCommands);
+		if (this.m_cmdAllCommands.getShowCmdControl()){
+			this.m_cmdAllCommands.controlsToContainer(this);
+		}
+		
+	}
 	
 }
 extend(GridCmdContainer,ControlContainer);
@@ -248,9 +273,6 @@ GridCmdContainer.prototype.addCommands = function(){
 		this.m_commands.push(this.m_cmdFilterOpen);
 	}
 	
-	if (this.m_cmdAllCommands){
-		this.m_commands.push(this.m_cmdAllCommands);
-	}
 }
 
 GridCmdContainer.prototype.addControls = function(){

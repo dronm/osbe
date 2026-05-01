@@ -1,20 +1,17 @@
-/* Copyright (c) 2016-2017 
-	Andrey Mikhalevich, Katren ltd.
-*/
-/*	
-	Description
-*/
-/** Requirements
- * @requires 
- * @requires core/extend.js  
-*/
+/**	
+ * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2016
 
-/* constructor
-@param string id
-@param object options{
+ * @extends EditRef
+ * @requires core/extend.js
+ * @requires EditRef.js     
 
-}
-*/
+ * @class
+ * @classdesc
+ 
+ * @param {string} id - Object identifier
+ * @param {Control} detailControl
+ * @param {array} options.detailkeyIds
+ */
 function GridAjxMaster(id,options){
 	options = options || {};	
 	

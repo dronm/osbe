@@ -1,122 +1,3 @@
-EditContainer -> EditSelect -> EditSelectRef -> PlatformSelect
-!!!BUT!!!
-Enum_role_types <- EditSelect - жестко заданный список!!!
-
-Edit -> EditRef
-
-***********************************************
-@ToDoList
-* GridCmdContainer
-  Печатные формы объекта в PopUp в контекстном меню и во всех командах. Исправить функцию GridCmdPrintObj.prototype.controlsToPopUp
-  Сейчас всегда GridCmdPrintObj.showCmdControlInPopup = false;
-
-XXX* Новый документ. Нет обновления грида после ввода нового документа
-
-
-ХХХ * Окно ошибок не понятно ведет себя после закрытия
-
-XXX* Допилить фильтр в гриде
-
-* Допилить выбор колонок, сортировка колонок. Все должно расти из colManager в том числе и фильтр
-	Все настройки должны сохранятся в инстансе App и хранится во всем сейнсе работы приложения
-	и применятся при открытии любых форм
-
-* WindowPrint,Control печать из template из одной функции
-
-* При редактировании таблицы фокус на первой колонке (пропустить?)
-
-!!!!!! ObjectEditControl.getValue() - что возврашает если пусто? Должен по идее Ref и не null
-	EditSelectRef.getValue() если не выбран - точно null||undefined
-
-
-********************************************************
-ГЛОБАЛЬНЫЕ ХОТЕЛКИ
-ХХХ* Меню на AJAX, один инстанс app на все приложение
-ХХХ* Меню и роли в базу данных, а не XML, чтобы admin мог редактировать роли и меню на лету!!!
-ХХХ* Доступы РОЛЕЙ. Хранить в отдельных файлах по ролям??? или по контроллерам? ил ипо контроллер_роль?
-ХХХ * DT схема к md
-
-
-* Закрытие дочернего окна через "Х": отрабатывать как обычное закрытие. Спрашивать о записи и т.д.
-
-!!!* Поиск по гриду. Тип = integer- поиск рабриает только по точному совпадению. Нужно огрничение на клиенте!!!
-
-* Мультипоиск как в Plpl
-
-* Интеррактив при работе с последовательностями
-
-* Ссылочные поля pm.setFieldValue("client",View.getElement("clinet").getValue())
-	и в метод попадает client_id значение ключа id гу или всех ключей!!!!
-
-* Проблемы многоязычности: локальные надписи в метаданных
-	publicMethod/descr/ru
-	publicMethod/descr/eng
-	controller/descr/ru
-	field/descr/ru
-	model/descr/ru
-	enum/value/descr/ru
-	field/aliases/ru
-	Внести изменения в Field->getAlias Server/Client
-	внести изменения в генерацию контроллеров
-	Внести изменения в документацию сервера из за изменения descr
-		
-	
-!!!* серверные шаблоны как template а не просто html для подстановки параметров
-
-
-* Wiki документация
-
-* Авторизация Яндекс/Google/ГосУслуги
-
-* HTML templates in inline edit forms
-
-* Full HTML templates in simple controls (Edit,Select etc)
-
-* Grid->EditSet? from Edit
-
-* Main Menu Constructor Drag@Drop, custom grid commands. Reference on other menu. Copy from other menu
-
-* Model defaultValue="now()" effects javascript
-* Model inheretance
-
-* Функции doc_operative_processing doc_log_delete,doc_log_insert,doc_log_update встроить в SQL.PGSQL.xsl
-seq_violations
-Порядок функций, временных таблиц при генерации нового документа
-генерация нового документа, что нибудт для ускорения процесса создания!!!!!
-
-
-**************************************************************************************
-Изменения в платформе для внесеня в другие проекты:
-	Flowers EditCheckSelect,EditCheckSelect.rs_ru
-	
-	GridCmdFilterSave,GridCmdFilterOpen
-	VariantStorageSaveView.js,VariantStorageOpenView.js
-	ReportVariantSaveView.rs_ru.js
-	
-	<jsTemplate id="VariantStorageSaveView" file="tmpl/VariantStorageSaveView.html"/>
-	<jsTemplate id="VariantStorageOpenView" file="tmpl/VariantStorageOpenView.html"/>
-	
-	Удалить все ReportVariant~
-		ReportVariantSaveView.rs_ru.js, ReportVariantOpenView.rs_ru.js
-		
-	ViewBase.html.xsl
-		Переделана функция
-		<xsl:template name="modelFromTemplate">
-		storageName
-		
-	GridCmdContainerAjx принимает variantStorageModel storageName
-	colTemplate deleted
-	
-	WindowAbout
-	
-	 Controller @condFields="TRUE"
-	 
-	 REMAKE All custom enum
-	 Constant_Controller.get_values field field_sep	 	 
-	 
-	 меню убрать
-	 Views tmpl,View,ViewList,rs_ru
-	 MainMenuConstructor
 2.1005
 	GridCmdSearch previous search cleaning	 
 	ХХХ* Меню на AJAX, один инстанс app на все приложение
@@ -168,6 +49,37 @@ seq_violations
 	
 2.1.006
 	No more Config_uniq.php,HOST server variable
-	SerConnector does not requere host parameter (it can be empty)
+	SerConnector does not require host parameter (it can be empty)
 	
 	ViewHTML.php no more host variable
+	
+2.1.007
+	actb distroys autocomplete window on Edit delDOM
+	EditSelectRef addNotSelect=false treated correctly
+	New function ViewObjectAjx.prototype.updateControlsFromResponse, onSaveOk calls it and shows note. So now it is possible to
+	override onSaveOk easily
+	
+2.1.008
+	actb keyboard up/down moves cursor	
+	
+2.1.009 06/11/18
+	AssocIndex index introduced for getting particular values from JSON fields
+	CommandBinding.js
+	DataBinding.js
+	ViewAjx.js
+	
+2.1.010 15/01/19
+	Response,ResponseXML,ResponseJSON function getModel, new parameter added medelOptions
+	
+2.1.011 29/01/19
+	ModelJSON constructor can have 1 parameter data	
+	
+	
+2.1.012 22/03/22
+	EditDate.js fourYearDigit parameter (default true), full 2 digit support
+	TODO: Год начала столетия. Сейчас с 20+	
+	
+	
+	
+	
+	

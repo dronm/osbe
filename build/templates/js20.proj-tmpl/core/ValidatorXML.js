@@ -15,5 +15,8 @@ function ValidatorXML(options){
 extend(ValidatorXML,Validator);
 
 ValidatorXML.prototype.correctValue = function(v){
+	if(typeof v === "string"){
+		v = DOMHelper.xmlDocFromString(v);
+	}
 	return v;
 }

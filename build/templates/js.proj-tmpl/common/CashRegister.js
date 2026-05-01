@@ -47,6 +47,7 @@ CashRegister.prototype.printCheck = function(params){
 		this.ECR.Price		= parseFloat(params.items[i].price);
 		this.ECR.Quantity	= parseFloat(params.items[i].quant);
 		this.ECR.Department	= (params.items[i].dep)? params.items[i].dep:1;
+		this.ECR.TaxTypeNumber	= 6;
 		if (this.ECR.Registration() != 0){
 			throw new Error("Ошибка при регистрации товара");
 		}		

@@ -45,7 +45,7 @@ ButtonSelectDataType.prototype.doSelect = function(e){
 	var model = new ModelJSON("dataTypeList",{"fields":["dataType","dataTypeDescrLoc"],"data":{"rows":rows}});
 	var self = this;
 	var ctrl_id = this.getId()+":selectDataType:form:body:view:grid";
-	var view = new View(this.getId()+":selectDataType:form:body:view",{
+	this.m_view = new View(this.getId()+":selectDataType:form:body:view",{
 		"elements":[
 			new Grid(ctrl_id,{
 				"keyIds":["dataType"],
@@ -77,10 +77,10 @@ ButtonSelectDataType.prototype.doSelect = function(e){
 		"onClickCancel":function(){
 			self.m_form.close();
 		},		
-		"onClickOk":function(){
-			self.onSelect();
+		"onClickOk":function(){	
+			self.onSelect(self.m_view.getElement("grid").getModelRow());
 		},				
-		"content":view,
+		"content":this.m_view,
 		"contentHead":this.HEAD_TITLE
 	});
 

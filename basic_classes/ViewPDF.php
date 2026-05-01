@@ -1,9 +1,12 @@
 <?php
-require_once(FRAME_WORK_PATH.'basic_classes/View.php');
+require_once(FRAME_WORK_PATH.'basic_classes/ViewExport.php');
 require_once('common/downloader.php');
 //require_once('common/PDFReport.php');
 
-class ViewPDF extends View{	
+/**
+ * DEBUG_PDF constant will make to leave intact generated temp xml files and log to PHP error log
+ */
+class ViewPDF extends ViewExport{	
 	const ER_TEMPL_NOT_FOUND='Template not found.';
 	const DEF_TEMPL_NAME = 'toPDF';
 	const DEF_TEMPL_PATH = "basic_classes/xslt/";
@@ -11,6 +14,10 @@ class ViewPDF extends View{
 	const ER_FILE_NOT_FOUND = 'Ошибка формирования PDF.';
 	
 	public function write(ArrayObject &$models,$errorCode=NULL){
+		if($this->hasError($models)){
+			return FALSE;
+		}		
+		
 		ob_clean();		
 
 		if (isset($_REQUEST['templ'])
@@ -36,6 +43,7 @@ class ViewPDF extends View{
 				self::DEF_TEMPL_PATH.
 				self::DEF_TEMPL_NAME.self::TEMPL_EXT)
 			){
+				header($_SERVER['SERVER_PROTOCOL'] . ' Internal Server Error', true, '500');
 				throw new Exception(self::ER_TEMPL_NOT_FOUND);
 			}
 			$templ_name = ViewPDF::DEF_TEMPL_NAME;
@@ -65,10 +73,14 @@ class ViewPDF extends View{
 		//FOP
 		try{
 			$out_file = OUTPUT_PATH.uniqid().".pdf";//$templ_name
-			//throw new Exception(sprintf(PDF_CMD_TEMPLATE,$xml_file, $xslt_file, $out_file));
-			exec(sprintf(PDF_CMD_TEMPLATE,$xml_file, $xslt_file, $out_file));
+			$cmd = sprintf(PDF_CMD_TEMPLATE,$xml_file, $xslt_file, $out_file);
+			if(defined('DEBUG_PDF')&&DEBUG_PDF){
+				error_log('FOP command:'.$cmd);
+			}
+			exec($cmd);
 					
 			if (!file_exists($out_file)){
+				header($_SERVER['SERVER_PROTOCOL'] . ' Internal Server Error', true, '500');
 				throw new Exception(ViewPDF::ER_FILE_NOT_FOUND);
 			}
 			try{
@@ -81,7 +93,9 @@ class ViewPDF extends View{
 				);
 			}
 			finally{
-				unlink($out_file);
+				if(!defined('DEBUG_PDF')||!DEBUG_PDF){
+					unlink($out_file);
+				}
 			}
 			
 			return TRUE;

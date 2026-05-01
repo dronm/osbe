@@ -40,6 +40,15 @@ GridCmdFilterOpen.prototype.m_dataCol;
 GridCmdFilterOpen.prototype.onCommand = function(e){
 	var self = this;
 	this.m_cmdFilter.setFilterVisibile(false);
+	(new VariantStorage({
+		"afterFormClose":function(val){
+			if(val)self.m_cmdFilter.getFilter().setValue(val);
+			self.m_cmdFilter.setFilterVisibile(true);
+		},
+		"variantStorageName":this.m_variantStorageName
+	})).openStorage(this.m_dataCol);
+	
+	/*
 	this.m_view = new VariantStorageOpenView("VariantStorageOpenView",{
 		"variantStorageName":this.m_variantStorageName,
 		"onClose":function(){				
@@ -47,8 +56,7 @@ GridCmdFilterOpen.prototype.onCommand = function(e){
 		},
 		"onSelect":function(fields){
 			self.loadVariant(fields);
-		},
-		"app":this.getApp()
+		}
 	});
 	this.m_form = new WindowFormModalBS(CommonHelper.uniqid(),{
 		"cmdCancel":true,
@@ -68,14 +76,15 @@ GridCmdFilterOpen.prototype.onCommand = function(e){
 	});
 
 	this.m_form.open();
+	*/
 }
 
 GridCmdFilterOpen.prototype.setCmdFilter = function(v){
 	this.m_cmdFilter = v;
 }
-
+/*
 GridCmdFilterOpen.prototype.loadVariant = function(fields){
-	var pm = (new VariantStorage_Controller(window.getApp())).getPublicMethod("get_"+this.m_dataCol);
+	var pm = (new VariantStorage_Controller()).getPublicMethod("get_"+this.m_dataCol);
 	pm.setFieldValue("storage_name",this.m_variantStorageName);
 	pm.setFieldValue("variant_name",fields.variant_name.getValue());
 	var self = this;
@@ -94,3 +103,4 @@ GridCmdFilterOpen.prototype.closeForm = function(){
 	this.m_form.close();
 	this.m_cmdFilter.setFilterVisibile(true);
 }
+*/

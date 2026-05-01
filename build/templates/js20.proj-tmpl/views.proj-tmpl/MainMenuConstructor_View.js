@@ -27,14 +27,15 @@ function MainMenuConstructor_View(id,options){
 		"labelCaption":"Пользователь:"
 	}));	
 	
-	this.addElement(new MainMenuTree(id+":content"));	
+	this.addElement(new MainMenuTree(id+":content"));
+	//this.addElement(new EditText(id+":content"));		
 
 	//****************************************************
 	var contr = new MainMenuConstructor_Controller();
 	
 	//read
 	this.setReadPublicMethod(contr.getPublicMethod("get_object"));
-	this.m_model = options.models.MainMenuConstructorDialog_Model;
+	this.m_model = (options.models&&options.models.MainMenuConstructorDialog_Model)? options.models.MainMenuConstructorDialog_Model : new MainMenuConstructorDialog_Model();
 	this.setDataBindings([
 		new DataBinding({"control":this.getElement("id")}),
 		new DataBinding({"control":this.getElement("content")}),

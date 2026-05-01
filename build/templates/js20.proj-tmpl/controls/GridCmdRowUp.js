@@ -1,25 +1,23 @@
-/* Copyright (c) 2017 
-	Andrey Mikhalevich, Katren ltd.
-*/
-/*	
-	Description
-*/
-/** Requirements
- * @requires 
- * @requires core/extend.js  
-*/
+/**	
+ * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2017
+ 
+ * @class
+ * @classdesc grid head object
+ 
+ * @requires GridCmd.js
+ * @requires GridCmd.js 
 
-/* constructor
-@param string id
-@param object options{
-
-}
-*/
+ * @extends ControlContainer
+  
+ * @param {string} id Object identifier
+ * @param {object} options
+ * @param {Control} [options.buttonClass=ButtonCtrl]
+ */
 function GridCmdRowUp(id,options){
 	options = options || {};	
 
 	options.glyph = "glyphicon-arrow-up";
-	options.buttonClass = ButtonCtrl;
+	options.buttonClass = options.buttonClass || ButtonCmd;
 	options.showCmdControl = (options.showCmdControl!=undefined)? options.showCmdControl:false;
 	
 	GridCmdRowUp.superclass.constructor.call(this,id,options);

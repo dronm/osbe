@@ -10,7 +10,7 @@ EditSelect заполнение из DOM параметров списка
 
 
 EditDow
-	NUST exteds From EditSelect	
+	MUST exted From EditSelect	
 	
 	
 	
@@ -53,10 +53,21 @@ X 	Ошибка после добавления!!!
 
 1) Predefined elements server/client
 2) Global server/client object RefType Now: server function only
-3)enums auto gen, dataTypes 
+3) enums auto gen, dataTypes 
 4) Metadata.dtd field.retAfterInsert
 5) Js object RefType, like being inside a DialogView
 6) При редактировании даты из календаря, при отмене меняет время на 00, надо всегда время оставлять текущим
 7) Field.SQLDefaultValue Чтобы значение по-умолчанию можно было выставить на сервере и при этом в insert запросе не уходил null, а просто поле пропускалось
 
+- Multy windows on frames
+- JSON sorting&&filtering in grids
+- Fatal errors,db error keeps firing, 
+- Path manager index.php/object/10/Child/TemplateId
+		c=Document_Controller&f=get_list&t=DocumentList&v=Child
+		Document/list/DocumentList/
+
+
 Control.toDOMBefore full support
+
+19/12/23 Редактирование детальной таблицы. При обновении главной происходит мигание, перерисовка
+

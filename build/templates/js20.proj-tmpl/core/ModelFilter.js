@@ -23,7 +23,7 @@ ModelFilter.prototype.m_filters;
 /* protected*/
 
 /*
- * returns struc Filter{field,sign,val,icase}
+ * returns struc Filter{field,sign,val,icase,lwcards,rwcards}
  */
 ModelFilter.prototype.getFilterVal = function(filter){
 	var ctrl = filter.binding.getControl();
@@ -45,6 +45,7 @@ ModelFilter.prototype.getFilterVal = function(filter){
 		ctrl.setValid();
 		try{
 			var fv;
+			
 			if (!ctrl.getIsRef()){
 				fv = ctrl.getValue();
 			}
@@ -58,19 +59,36 @@ ModelFilter.prototype.getFilterVal = function(filter){
 				//@ToDo constrain to one primary key column!!!
 			}
 			
+			/*debugger
+			 * РАЗОБРАТЬСЯ!!! ставит время в фильтре с датой на дефолт, даже в произвольном периоде
+			 * непонятно, почему нельзя оставить время как есть? оно уже должно быть выровнено как надо!
+			*/
+			if (ctrl.getValidator && ctrl.getValidator() instanceof ValidatorDate
+			&& (f instanceof FieldDateTime || f instanceof FieldDateTimeTZ)
+			&& ctrl.getTimeValueStr && ctrl.getTimeValueStr()
+			){
+				fv.setHours(0);
+				fv.setMinutes(0);
+				fv.setSeconds(0);			
+				fv = new Date(fv.getTime()+DateHelper.timeToMS(ctrl.getTimeValueStr()));	
+			}
+			//console.log("ModelFilter.prototype.getFilterVal id="+res.field+" val="+fv)
+			if(fv === false && filter.falseValueNoFilter){
+				return res; //no filter
+			}
 			f.setValue(fv);
-		}
-		catch(e){
+
+		}catch(e){
 			ctrl.setNotValid(e.message);
 			res.incorrect_val = true;
 		}
 		
 		res.val = f.getValueXHR();
-		if (filter.sign=="lk"){
-			res.val = ( (filter.lwcards)? "%":"") + res.val + ( (filter.rwcards)? "%":"")
+		if (filter.sign=="lk" || filter.sign=="ilk"){
+			res.val = ( filter.lwcards? "%":"") + res.val + ( filter.rwcards? "%":"")
 		}
 		
-		res.icase = (filter.icase)? "1":"0";
+		res.icase = filter.icase? "1":"0";
 	}
 	else if (ctrl.getRequired() || f.getValidator().getRequired()){
 		ctrl.setNotValid(f.getValidator().ER_EMPTY);
@@ -115,7 +133,7 @@ ModelFilter.prototype.setFilters = function(v){
 ModelFilter.prototype.applyFilters = function(grid){	
 	var set_cnt = 0;
 	for (var id in this.m_filters){
-		if (this.m_filters[id].bindings){
+		if (this.m_filters[id] && this.m_filters[id].bindings){
 			for (var i=0;i<this.m_filters[id].bindings.length;i++){
 				var struc = this.getFilterVal(this.m_filters[id].bindings[i]);
 				if (!struc.incorrect_val && struc.val!==undefined){
@@ -127,7 +145,7 @@ ModelFilter.prototype.applyFilters = function(grid){
 				}
 			}
 		}
-		else{
+		else if(this.m_filters[id]){
 			var struc = this.getFilterVal(this.m_filters[id]);
 			if (!struc.incorrect_val && struc.val!==undefined){
 				grid.setFilter(struc);
@@ -174,7 +192,7 @@ ModelFilter.prototype.applyFiltersToPublicMethod = function(pm){
 			if (struc.incorrect_val){
 				incorrect_val = true;
 			}
-			else{
+			else if( struc.val ||(!struc.val && this.m_filters[id].binding.getSendNull()) ){
 				s_fields	= ( (!s_fields)? "":s_fields+sep) + struc.field;
 				s_signs		= ( (!s_signs)? "":s_signs+sep ) + struc.sign;
 				s_vals		= ( (!s_vals)? "":s_vals+sep ) + struc.val;
@@ -198,37 +216,45 @@ ModelFilter.prototype.applyFiltersToPublicMethod = function(pm){
 	return set_cnt;
 }
 
-ModelFilter.prototype.resetFilters = function(grid){
-	for (var id in this.m_filters){
-		var bind = this.m_filters[id].binding;
+ModelFilter.prototype.resetFilter = function(id,grid){
+	var bind = this.m_filters[id].binding;
+			
+	var ctrl = bind.getControl();
+	if (!ctrl){
+		throw Error(CommonHelper.format(this.ER_NO_CTRL,[id]));	
+	}
 				
-		var ctrl = bind.getControl();
-		if (!ctrl){
-			throw Error(CommonHelper.format(this.ER_NO_CTRL,[id]));	
-		}
-					
-		ctrl.reset();
-		//debugger
-		if (this.m_filters[id].bindings){
-			for (var i=0;i<this.m_filters[id].bindings.length;i++){
-				var filter = this.m_filters[id].bindings[i];
-				grid.unsetFilter({
-					"field":filter.binding.getField().getId(),
-					"sign":filter.sign
-				});
-			}
-		}
-		else{
-			var filter = this.m_filters[id];
+	ctrl.reset();
+	//debugger
+	if (this.m_filters[id].bindings){
+		for (var i=0;i<this.m_filters[id].bindings.length;i++){
+			var filter = this.m_filters[id].bindings[i];
 			grid.unsetFilter({
 				"field":filter.binding.getField().getId(),
 				"sign":filter.sign
 			});
 		}
 	}
+	else{
+		var filter = this.m_filters[id];
+		grid.unsetFilter({
+			"field":filter.binding.getField().getId(),
+			"sign":filter.sign
+		});
+	}
+}
+
+ModelFilter.prototype.resetFilters = function(grid){
+	for (var id in this.m_filters){
+		this.resetFilter(id,grid);
+	}
 }
 
 ModelFilter.prototype.serialize = function(){
+	return CommonHelper.serialize(this.getValue());
+}
+
+ModelFilter.prototype.getValue = function(){
 	var o = {};
 	for (var id in this.m_filters){		
 		var ctrl = this.m_filters[id].binding.getControl();
@@ -266,23 +292,33 @@ ModelFilter.prototype.serialize = function(){
 		}	
 	}
 	
-	return CommonHelper.serialize(o);
+	return o;
+}
+
+/**
+ * @returns {int} - count of set filters (not null)
+ * @param {string} str String with serialezed object
+ */
+ModelFilter.prototype.unserialize= function(str){	
+	return this.setValue(CommonHelper.unserialize(str));
 }
 
 /**
  * @returns {int} count of set filters (not null)
- * @param {string} str String with serialozed object
+ * @param {object} o
  */
-ModelFilter.prototype.unserialize= function(str){
-	var o = CommonHelper.unserialize(str);
+ModelFilter.prototype.setValue= function(o){
+//console.log("ModelFilter.prototype.setValue")
+//console.dir(o)
 	var set_cnt = 0;
+	if (!o)return;
 	for (var id in this.m_filters){
-		var ctrl = this.m_filters[id].binding.getControl();
+		var ctrl = this.m_filters[id].binding.getControl();		
 		if (ctrl){
 			if (o[id]){
-				if (this.m_filters[id].bindings && typeof(o[id].value)!="object"){
-					//ctrl.setValue(o[id].value);
-					//set_cnt++;
+				// && typeof(o[id].value)!="object"
+				if (this.m_filters[id].bindings){
+					if (o[id].value.period)ctrl.setValue(o[id].value.period);
 					for (var i=0;i<this.m_filters[id].bindings.length;i++){
 						ctrl = this.m_filters[id].bindings[i].binding.getControl();
 						if (ctrl){
@@ -297,12 +333,12 @@ ModelFilter.prototype.unserialize= function(str){
 			
 					}
 				}
-				else{			
+				else{		
 					ctrl.setInitValue(o[id].value);
-//console.log("ModelFilter.prototype.unserialize Ctrl set to ")
-//console.dir(ctrl.getValue());
+					//console.log("ModelFilter.prototype.setValue isNull="+ctrl.isNull()+" val="+ctrl.getValue())
+					//console.log("ModelFilter.prototype.setValue o[id].value="+o[id].value)
 					set_cnt++;
-				}
+				}				
 			}
 			else{
 				ctrl.reset();

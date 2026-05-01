@@ -1,0 +1,95 @@
+-- Function: rg_{{REG_TABLE}}_set_custom_period(timestamp without time zone)
+
+-- DROP FUNCTION rg_{{REG_TABLE}}_set_custom_period(timestamp without time zone);
+
+CREATE OR REPLACE FUNCTION rg_{{REG_TABLE}}_set_custom_period(in_new_period timestamp without time zone)
+  RETURNS void AS
+$BODY$
+DECLARE
+	NEW_PERIOD timestamp without time zone;
+	v_prev_current_period timestamp without time zone;
+	v_current_period timestamp without time zone;
+	CURRENT_PERIOD timestamp without time zone;
+	TA_PERIOD timestamp without time zone;
+	REG_INTERVAL interval;
+BEGIN
+	NEW_PERIOD = rg_calc_period_start('{{REG_ID}}'::reg_types, in_new_period);
+	CURRENT_PERIOD = rg_calc_period('{{REG_ID}}'::reg_types);
+	
+	TA_PERIOD = rg_current_balance_time();
+	
+	--iterate through all periods between CURRENT_PERIOD and NEW_PERIOD
+	REG_INTERVAL = rg_calc_interval('{{REG_ID}}'::reg_types);
+	v_prev_current_period = CURRENT_PERIOD;		
+	LOOP
+		v_current_period = v_prev_current_period + REG_INTERVAL;
+		IF v_current_period > NEW_PERIOD THEN
+			EXIT;  -- exit loop
+		END IF;
+		--clear period
+		DELETE FROM rg_{{REG_TABLE}}
+		WHERE date_time = v_current_period;
+		--new data
+		INSERT INTO rg_{{REG_TABLE}}
+		(date_time
+		{{#DIMENSIONS}}
+		,{{FIELD_ID}}
+		{{/DIMENSIONS}}
+		{{#FACTS}}
+		,{{FIELD_ID}}
+		{{/FACTS}}
+		)
+		(SELECT
+				v_current_period
+				{{#DIMENSIONS}}
+				,rg.{{FIELD_ID}}
+				{{/DIMENSIONS}}
+				{{#FACTS}}
+				,rg.{{FIELD_ID}}
+				{{/FACTS}}
+			FROM rg_{{REG_TABLE}} As rg
+			WHERE (
+			{{#FACTS}}{{#NOT_FIRST}} OR {{/NOT_FIRST}}rg.{{FIELD_ID}}<>0{{/FACTS}}
+			)
+			AND (rg.date_time=v_prev_current_period)
+		);
+		v_prev_current_period = v_current_period;
+	END LOOP;
+	--new TA data
+	DELETE FROM rg_{{REG_TABLE}}
+	WHERE date_time=TA_PERIOD;
+	INSERT INTO rg_{{REG_TABLE}}
+	(date_time
+	{{#DIMENSIONS}}
+	,{{FIELD_ID}}
+	{{/DIMENSIONS}}
+	{{#FACTS}}
+	,{{FIELD_ID}}
+	{{/FACTS}}
+	)
+	(SELECT
+		TA_PERIOD
+		{{#DIMENSIONS}}
+		,rg.{{FIELD_ID}}
+		{{/DIMENSIONS}}
+		{{#FACTS}}
+		,rg.{{FIELD_ID}}
+		{{/FACTS}}
+		FROM rg_{{REG_TABLE}} AS rg
+		WHERE (
+		{{#FACTS}}{{#NOT_FIRST}} OR {{/NOT_FIRST}}rg.{{FIELD_ID}}<>0{{/FACTS}}
+		)
+		AND (rg.date_time=NEW_PERIOD-REG_INTERVAL)
+	);
+	DELETE FROM rg_{{REG_TABLE}} WHERE (date_time>NEW_PERIOD)
+	AND (date_time<>TA_PERIOD);
+	--set new period
+	UPDATE rg_calc_periods SET date_time = NEW_PERIOD
+	WHERE reg_type='{{REG_ID}}'::reg_types;		
+END
+$BODY$
+  LANGUAGE plpgsql VOLATILE
+  COST 100;
+ALTER FUNCTION rg_{{REG_TABLE}}_set_custom_period(timestamp without time zone)
+  OWNER TO ;
+

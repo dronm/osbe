@@ -58,7 +58,9 @@ ModelJSONTree.prototype.getRow = function(ind){
 
 ModelJSONTree.prototype.addRow = function(row){	
 	var tags = this.getTagRows();
-
+	if(!this.m_parentNode){//added 05/10/20
+		this.m_parentNode = this.m_model;
+	}
 	this.m_parentNode[tags] = this.m_parentNode[tags] || [];
 	this.m_parentNode[tags].push(row);
 }
@@ -92,7 +94,7 @@ ModelJSONTree.prototype.getRows = function(includeDeleted){
 ModelJSONTree.prototype.makeRow = function(){
 	var key_field = this.getKeyField();
 	var key_id = key_field.getId();
-	var row = {"fields":{}};	
+	var row = {"fields":{}};//"fields":{} corrected	
 	for (var fid in this.m_fields){
 		var v = "";
 		var f_set = this.m_fields[fid].isSet();
@@ -103,10 +105,16 @@ ModelJSONTree.prototype.makeRow = function(){
 		else if (f_set){
 			v = this.m_fields[fid].getValue();
 		}
-	
-		row.fields[fid] = v;
+		
+		//corrected 20/03/21
+		if(row.fields){
+			row.fields[fid] = v;	
+		}else{
+			row[fid] = v;
+		}
 	}
-	row[this.getTagParent()] = (this.m_parentNode && this.m_parentNode.fields)? this.m_parentNode.fields[this.getKeyField().getId()]:null;
+	// && this.m_parentNode.fields
+	row[this.getTagParent()] = (this.m_parentNode)? this.m_parentNode[this.getKeyField().getId()]:null;
 	return row;
 }
 

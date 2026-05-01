@@ -1,5 +1,5 @@
 /**	
- * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2012,2014,2016,2017
+ * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2012,2014,2016,2017,2022
  
  * @class
  * @classdesc Shows search form
@@ -28,18 +28,25 @@ var WindowSearch = {
 		var cur_opts;
 		var select_opts = [];
 		for (var i=0;i<options.columns.length;i++){
+			/*if(options.columns[i].getSearchable()===false){
+				continue;
+			}*/
 			var opt = new EditSelectOption(this.m_modalId+":where:"+i,{
 				"value":options.columns[i].id,
 				"checked":options.columns[i].current,
 				"descr":options.columns[i].descr
 			});
-			opt.searchOptions = options.columns[i];
+			opt.getSearchOptions = (function(opts){
+				return function(){
+					return opts;
+				}
+			})(options.columns[i]);
+			
 			select_opts.push(opt);
 			if (options.columns[i].current){
-				cur_opts = opt.searchOptions;
+				cur_opts = opt.getSearchOptions();
 			}
 		}
-		
 		//if(!current_class)current_class = EditString;
 		this.setSearchCtrl(cur_opts,options.text);
 		this.m_modal = new WindowFormModalBS(this.m_modalId,{
@@ -53,7 +60,7 @@ var WindowSearch = {
 						"addNotSelected":false,
 						"events":{
 							"change":function(){			
-								var opts = this.getOption().searchOptions;
+								var opts = this.getOption().getSearchOptions();
 								var how_ctrl = self.m_modal.m_body.getElement("cont").getElement("how");
 								how_ctrl.setVisible(opts.typeChange);
 								how_ctrl.setValue(opts.searchType);
@@ -110,21 +117,26 @@ var WindowSearch = {
 			var res_struc;
 			if (res==self.RES_OK){
 				var cont = self.m_modal.m_body.getElement("cont");
-				var ctrl = cont.getElement("search_ctrl");
+				//var ctrl = cont.getElement("search_ctrl");
+				var ctrl = self.m_searchCtrl;
 			
 				//*** search value ***
+				var search_descr;
 				if (ctrl.getIsRef && ctrl.getIsRef()
 				&& !(ctrl.searchField.getDataType()==Field.prototype.DT_JSON || ctrl.searchField.getDataType()==Field.prototype.DT_JSONB)
 				){			
 					//reference field with keys					
 					var keyIds = ctrl.getKeyIds();
-					if (keyIds.length>=1){
-						ctrl.searchField.setValue(ctrl.getKeys()[keyIds[0]]);
+					var ctrl_keys = ctrl.getKeys(); 
+					if (keyIds.length>=1 &&ctrl_keys&&ctrl_keys[keyIds[0]]){
+						ctrl.searchField.setValue(ctrl_keys[keyIds[0]]);
 					}
+					search_descr = ctrl.getValue().getDescr();
 				}
 				else{
 					//simple field
 					var val = ctrl.getValue();
+					search_descr = val;
 					if (ctrl.setValid)ctrl.setValid();
 				
 					try{
@@ -141,7 +153,10 @@ var WindowSearch = {
 				res_struc = {
 					"search_str":ctrl.searchField.getValueXHR(),
 					"where":ctrl.searchField.getId(),//cont.getElement("where").getValue(),
-					"how":cont.elementExists("how")? cont.getElement("how").getValue():"match"			
+					"how":cont.elementExists("how")? cont.getElement("how").getValue():"match",
+					"descr":cont.getElement("where").getOption().getDescr(),
+					"search_descr":search_descr,
+					"condSign":ctrl.searchCondSign
 				}				
 			}			
 			self.delEvents();
@@ -217,12 +232,14 @@ var WindowSearch = {
 		return res;
 	},
 	setSearchCtrl:function(opts,ctrlValue){
-		
+		//debugger
+		if(!opts){
+			return;
+		}
 		if (this.m_searchCtrl){			
 			this.m_searchCtrl.delDOM();
 			delete this.m_searchCtrl;			
 		}
-		//CommonHelper.merge(opts.ctrlOptions,
 		var ctrl_opts = {
 			"labelCaption":this.STR_CAP,
 			"placeholder":this.STR_PLACEHOLDER,
@@ -231,8 +248,20 @@ var WindowSearch = {
 			"value":ctrlValue,
 			"focus":true
 		};
+		if(opts.ctrlOptions){
+			//CommonHelper.merge(ctrl_opts, opts.ctrlOptions);
+			//corrected on 30/11/24, merge ruins option values
+			//if they are present in opts.ctrlOptions but with no values!!!
+			for(let ctrlOptId in opts.ctrlOptions){
+				if(!ctrl_opts[ctrlOptId]){
+					//does not exist
+					ctrl_opts[ctrlOptId] = opts.ctrlOptions[ctrlOptId];					
+				}
+			}
+		}
 		this.m_searchCtrl = new opts.ctrlClass(this.m_modalId+":cont:search_ctrl",ctrl_opts);
 		this.m_searchCtrl.searchField = opts.field;
+		this.m_searchCtrl.searchCondSign = opts.condSign;
 	}
 }
 

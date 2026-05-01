@@ -23,19 +23,21 @@
 function <xsl:value-of select="$enum_id"/>(id,options){
 	options = options || {};
 	options.addNotSelected = (options.addNotSelected!=undefined)? options.addNotSelected:true;
-	var multy_lang_values = {<xsl:apply-templates select="value/*"/>};
 	options.options = [<xsl:apply-templates select="value"/>];
 	
 	<xsl:value-of select="$enum_id"/>.superclass.constructor.call(this,id,options);
 	
 }
 extend(<xsl:value-of select="$enum_id"/>,EditSelect);
+
+<xsl:value-of select="$enum_id"/>.prototype.multyLangValues = {<xsl:apply-templates select="value/*"/>};
+
 <![CDATA[]]>
 </xsl:template>
 
 <xsl:template match="enums/enum/value">
 <xsl:if test="position() &gt; 1">,</xsl:if>{"value":"<xsl:value-of select='@id'/>",
-"descr":multy_lang_values[window.getApp().getLocale()+"_"+"<xsl:value-of select='@id'/>"],
+"descr":this.multyLangValues[window.getApp().getLocale()+"_"+"<xsl:value-of select='@id'/>"],
 checked:(options.defaultValue&amp;&amp;options.defaultValue=="<xsl:value-of select='@id'/>")}
 </xsl:template>
 

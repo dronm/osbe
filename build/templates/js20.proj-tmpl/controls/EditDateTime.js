@@ -22,6 +22,7 @@ function EditDateTime(id,options){
 	options.validator = options.validator || new ValidatorDateTime(options);
 	options.editMask = options.editMask || window.getApp().getDateTimeEditMask();
 	options.dateFormat = options.dateFormat || window.getApp().getDateTimeFormat();
+	//console.log("EditDateTime options.editMask="+options.editMask+" options.dateFormat="+options.dateFormat)
 	//options.editContClassName = options.editContClassName || "input-group "+options.app.getBsCol()+"4";
 	
 	EditDateTime.superclass.constructor.call(this,id,options);

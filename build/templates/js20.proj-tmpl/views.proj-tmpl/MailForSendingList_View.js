@@ -1,8 +1,9 @@
 /**	
  * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2017
 
- * @extends
- * @requires core/extend.js  
+ * @extends ViewAjx
+ * @requires js20/core/extend.js
+ * @requires js20/controls/ViewAjx.js     
 
  * @class
  * @classdesc
@@ -21,12 +22,49 @@ function MailForSendingList_View(id,options){
 	var model = options.models.MailForSendingList_Model;
 	var contr = new MailForSending_Controller();
 	
-	var constants = {"doc_per_page_count":null};
+	var constants = {"doc_per_page_count":null,"grid_refresh_interval":null};
 	window.getApp().getConstantManager().get(constants);
 	
 	var pagClass = window.getApp().getPaginationClass();
 	
 	var popup_menu = new PopUpMenu();
+	
+	var period_ctrl = new EditPeriodDate(id+":filter-ctrl-period",{
+		"field":new FieldDateTime("date_time")
+	});
+	
+	var filters = {
+		"period":{
+			"binding":new CommandBinding({
+				"control":period_ctrl,
+				"field":period_ctrl.getField()
+			}),
+			"bindings":[
+				{"binding":new CommandBinding({
+					"control":period_ctrl.getControlFrom(),
+					"field":period_ctrl.getField()
+					}),
+				"sign":"ge"
+				},
+				{"binding":new CommandBinding({
+					"control":period_ctrl.getControlTo(),
+					"field":period_ctrl.getField()
+					}),
+				"sign":"le"
+				}
+			]
+		},
+		"email_type":{
+			"binding":new CommandBinding({
+				"control":new Enum_email_types(id+":filter-ctrl-email_type",{
+					"contClassName":"form-group-filter",
+					"labelCaption":"Статус"
+				}),
+				"field":new FieldString("email_type")}),
+			"sign":"e"		
+		}
+	};
+	
 	
 	this.addElement(new GridAjx(id+":grid",{
 		"model":model,
@@ -38,7 +76,11 @@ function MailForSendingList_View(id,options){
 		"commands":new GridCmdContainerAjx(id+":grid:cmd",{
 			"cmdInsert":false,
 			"cmdCopy":false,
-			"cmdDelete":false
+			"cmdDelete":false,
+			"cmdEdit":true,
+			"cmdFilter":true,
+			"filters":filters,
+			"variantStorage":options.variantStorage			
 		}),
 		"head":new GridHead(id+"-grid:head",{
 			"elements":[
@@ -46,10 +88,18 @@ function MailForSendingList_View(id,options){
 					"elements":[
 						new GridCellHead(id+":grid:head:date_time",{
 							"columns":[
-								new GridColumnDateTime("date_time",{"field":model.getField("date_time")})
+								new GridColumnDate({
+									"dateFormat":"d/m/Y H:i",
+									"field":model.getField("date_time"),
+									"ctrlClass":EditDate,
+									"searchOptions":{
+										"field":new FieldDate("date_time"),
+										"searchType":"on_beg"
+									}
+								})
 							],
 							"sortable":true,
-							"sort":"asc"
+							"sort":"desc"
 						}),
 						new GridCellHead(id+":grid:head:subject",{
 							"columns":[
@@ -83,13 +133,27 @@ function MailForSendingList_View(id,options){
 						}),
 						new GridCellHead(id+":grid:head:sent_date_time",{
 							"columns":[
-								new GridColumnDateTime("sent_date_time",{"field":model.getField("sent_date_time")})
+								new GridColumnDate({
+									"dateFormat":"d/m/Y H:i",
+									"field":model.getField("sent_date_time"),
+									"ctrlClass":EditDate,
+									"searchOptions":{
+										"field":new FieldDate("sent_date_time"),
+										"searchType":"on_beg"
+									}
+								})
 							],
 							"sortable":true
 						}),
 						new GridCellHead(id+":grid:head:email_type",{
 							"columns":[
-								new EnumGridColumn_email_types("email_type",{"field":model.getField("email_type")})
+								new EnumGridColumn_email_types({"field":model.getField("email_type")})
+							],
+							"sortable":true
+						})			
+						,new GridCellHead(id+":grid:head:error_str",{
+							"columns":[
+								new GridColumn({"field":model.getField("error_str")})
 							],
 							"sortable":true
 						})			
@@ -103,7 +167,7 @@ function MailForSendingList_View(id,options){
 			{"countPerPage":constants.doc_per_page_count.getValue()}),		
 		
 		"autoRefresh":false,
-		"refreshInterval":0,
+		"refreshInterval":constants.grid_refresh_interval.getValue()*1000,
 		"rowSelect":false,
 		"focus":true
 	}));		

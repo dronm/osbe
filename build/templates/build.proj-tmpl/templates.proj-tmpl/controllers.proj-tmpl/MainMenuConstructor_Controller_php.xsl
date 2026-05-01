@@ -21,8 +21,8 @@
 require_once(FRAME_WORK_PATH.'basic_classes/ParamsSQL.php');
 
 class <xsl:value-of select="@id"/>_Controller extends <xsl:value-of select="@parentId"/>{
-	public function __construct($dbLinkMaster=NULL){
-		parent::__construct($dbLinkMaster);<xsl:apply-templates/>
+	public function __construct($dbLinkMaster=NULL,$dbLink=NULL){
+		parent::__construct($dbLinkMaster,$dbLink);<xsl:apply-templates/>
 	}	
 	<xsl:call-template name="extra_methods"/>
 }
@@ -30,6 +30,28 @@ class <xsl:value-of select="@id"/>_Controller extends <xsl:value-of select="@par
 </xsl:template>
 
 <xsl:template name="extra_methods">
+
+	public function genMenuForUser($userId,$roleId){
+		$pm = new PublicMethod('update');
+		$pm->addParam(new FieldExtString('content'));
+		$pm->addParam(new FieldExtInt('user_id'));
+		$pm->addParam(new FieldExtInt('role_id'));
+	
+		$id = $this->getDbLink()->query(sprintf(
+			"SELECT * FROM main_menus WHERE user_id=%d
+			UNION ALL
+			SELECT * FROM main_menus WHERE user_id=%d AND role_id='%s'
+			UNION ALL
+			SELECT * FROM main_menus WHERE role_id='%s'",
+			$userId,
+			$userId,$roleId,
+			$roleId
+		));
+		while($ar = $this->getDbLink()->fetch_array($id)){
+			$this->gen_menu($pm,$ar['id']);
+		}
+	}
+
 	private function gen_menu($pm,$newId){
 		$p = new ParamsSQL($pm,$this->getDbLink());
 		$p->addAll();
@@ -83,8 +105,9 @@ class <xsl:value-of select="@id"/>_Controller extends <xsl:value-of select="@par
 		//throw new Exception(USER_MODELS_PATH.'MainMenu_Model_'.$role_id. ( (isset($user_id))? '_'.$user_id:'' ). '.php');
 		
 		$postf = ( (isset($role_id))? '_'.$role_id:'' ).( (isset($user_id))? '_'.$user_id:'' ); 		
+		//USER_MODELS_PATH
 		file_put_contents(
-			USER_MODELS_PATH.'MainMenu_Model'. $postf. '.php',
+			OUTPUT_PATH.'MainMenu_Model'. $postf. '.php',
 			sprintf('<![CDATA[<?php]]>
 require_once(FRAME_WORK_PATH.\'basic_classes/Model.php\');
 
@@ -103,7 +126,7 @@ class MainMenu_Model%s extends Model{
 		$this->gen_menu($pm,$ids['id']);
 	}
 	public function update($pm){
-		$this->gen_menu($pm);
+		$this->gen_menu($pm,NULL);
 		parent::update($pm);	
 	}
 

@@ -1,19 +1,19 @@
 /**	
  * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2016
 
- * @extends
- * @requires
+ * @extends GridColumn
+ * @requires GridColumn
 
  * @class
  * @classdesc
 
- * @param {string||namespace} id depricated syntax. new syntax - with options as the first parameter!
  * @param {Object} options
+ * @param {bool} [options.showFalse=TRUE]
  */
 function GridColumnBool(options){
 	options = options || {};	
 	
-	options.assocClassList = {"true":"glyphicon glyphicon-ok","false":"glyphicon glyphicon-remove"};
+	options.assocClassList = options.assocClassList||{"true":"glyphicon glyphicon-ok","false":( (options.showFalse==undefined||options.showFalse===true)? "glyphicon glyphicon-remove":null) };
 	GridColumnBool.superclass.constructor.call(this,options);
 }
 extend(GridColumnBool,GridColumn);

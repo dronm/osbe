@@ -31,6 +31,7 @@ ConstantManager.prototype.fillFromXML = function(xml){
 			"val_type":new FieldString()
 			}
 		});
+	
 	while(m.getNextRow()){
 		var v_t = m.getFieldValue("val_type");
 		var v = m.getFieldValue("val");
@@ -48,6 +49,9 @@ ConstantManager.prototype.fillFromXML = function(xml){
 		else if (v_t == "Date"){
 			v_class = FieldDate;
 		}								
+		else if (v_t == "Bool"){
+			v_class = FieldBool;
+		}								
 		else if (v_t == "JSON" || v_t == "JSONB"){
 			v_class = FieldJSON;
 		}										
@@ -61,10 +65,10 @@ ConstantManager.prototype.fillFromXML = function(xml){
 
 /* Public */
 
-/*
-@param object constants[id]=null
-on return it is filled with values from server or from cach
-*/
+/**
+ * @param {object} constants[id]=null
+ * on return it is filled with values from server or from cache
+ */
 ConstantManager.prototype.get = function(constants){	
 	var not_found = "";
 	var not_found_ar = [];
@@ -102,6 +106,29 @@ ConstantManager.prototype.get = function(constants){
 }
 
 
-ConstantManager.prototype.set = function(constants){	
+ConstantManager.prototype.set = function(id,val,callBack){	
+	var self = this;
+	var pm = (new Constant_Controller()).getPublicMethod("set_value");
+	pm.setFieldValue("id",id);
+	pm.setFieldValue("val",CommonHelper.serialize(val));
+	pm.run({
+		"ok":function(resp){
+			if(self.m_values[id]){
+				self.m_values[id] = val;
+			}
+			if(callBack){
+				callBack();
+			}
+		}
+	});
+}
+
+/**
+ * event message handler
+ */
+ConstantManager.prototype.onEventSrvMessage = function(json){	
+	if(json.params && json.params.id && json.params.val){
+		this.m_values[json.params.id] = CommonHelper.unserialize(json.params.val);
+	}
 }
 

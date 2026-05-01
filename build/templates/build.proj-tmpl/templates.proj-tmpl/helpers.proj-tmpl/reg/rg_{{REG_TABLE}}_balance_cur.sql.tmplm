@@ -1,0 +1,43 @@
+-- Function: rg_{{REG_TABLE}}_balance({{#DIMENSIONS}}{{#NOT_FIRST}},{{/NOT_FIRST}}{{FIELD_SQL_DATA_TYPE}}[]{{/DIMENSIONS}})
+
+-- DROP FUNCTION rg_{{REG_TABLE}}_balance({{#DIMENSIONS}}{{#NOT_FIRST}},{{/NOT_FIRST}}{{FIELD_SQL_DATA_TYPE}}[]{{/DIMENSIONS}});
+
+CREATE OR REPLACE FUNCTION rg_{{REG_TABLE}}_balance(
+	{{#DIMENSIONS}}
+	{{#NOT_FIRST}},{{/NOT_FIRST}}IN in_{{FIELD_ID}}_ar {{FIELD_SQL_DATA_TYPE}}[]
+	{{/DIMENSIONS}}
+)
+  RETURNS TABLE(
+  	{{#DIMENSIONS}}
+  	{{#NOT_FIRST}},{{/NOT_FIRST}}{{FIELD_ID}} {{FIELD_SQL_DATA_TYPE}}
+  	{{/DIMENSIONS}}
+  	{{#FACTS}}
+  	,{{FIELD_ID}} {{FIELD_SQL_DATA_TYPE}}
+  	{{/FACTS}}
+  	) AS
+$BODY$
+	SELECT
+		{{#DIMENSIONS}}
+		{{#NOT_FIRST}},{{/NOT_FIRST}}b.{{FIELD_ID}}
+		{{/DIMENSIONS}}
+		{{#FACTS}}
+		,b.{{FIELD_ID}}
+		{{/FACTS}}
+	FROM rg_{{REG_TABLE}} AS b
+	WHERE b.date_time=rg_current_balance_time()
+		{{#DIMENSIONS}}
+		AND (in_{{FIELD_ID}}_ar IS NULL OR coalesce(array_length(in_{{FIELD_ID}}_ar,1),0)=0 OR (b.{{FIELD_ID}}=ANY(in_{{FIELD_ID}}_ar)))
+		{{/DIMENSIONS}}
+		AND (
+			{{#FACTS}}
+			{{#NOT_FIRST}} OR {{/NOT_FIRST}}b.{{FIELD_ID}}<>0
+			{{/FACTS}}
+		)
+	;
+$BODY$
+  LANGUAGE sql VOLATILE CALLED ON NULL INPUT
+  COST 100
+  ROWS 1000;
+ALTER FUNCTION rg_{{REG_TABLE}}_balance({{#DIMENSIONS}}{{#NOT_FIRST}},{{/NOT_FIRST}}{{FIELD_SQL_DATA_TYPE}}[]{{/DIMENSIONS}})
+  OWNER TO ;
+

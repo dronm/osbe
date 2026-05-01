@@ -17,8 +17,11 @@
  * @param {Object} options
  * @param {Validator} options.validator
  * @param {string} [options.className=this.DEF_CLASS]
+ * @param {string} options.addclassName
  * @param {string} [options.type=this.DEF_INPUT_TYPE]
  * @param {string} options.editMask
+ * @param {string} options.regExpression
+ * @param {string} options.regExpressionInvalidMessage 
  * @param {string} options.labelCaption
  * @param {string} options.labelOptions 
  * @param {Label} options.label
@@ -36,11 +39,17 @@
  * @param {int} options.acMinLengthForQuery
  * @param {bool} options.acIc
  * @param {bool} options.acMid
+ * @param {bool} options.acCount 
+ * @param {function} options.acOnBeforeSendQuery
+ * @param {function} options.acOnSendQueryResult
  * @param {PublicMethod} options.acPublicMethod
  * @param {ControllerObjServer} options.acController  
  * @param {Model} options.acModel
  
  * @param {bool} [options.inline=false]
+ 
+ * @param {function} options.onSelect
+ * @param {function} options.onReset fired when reset() is called  
  */
 function Edit(id,options){
 	options = options || {};
@@ -74,6 +83,9 @@ function Edit(id,options){
 	}
 	
 	options.className = (options.className!==undefined)? options.className:this.DEF_CLASS;	
+	if(options.addClassName!=undefined){
+		options.className+= " "+options.addClassName;
+	}
 	options.attrs.type = options.attrs.type || options.type || this.DEF_INPUT_TYPE;		
 	options.attrs.maxlength = options.attrs.maxlength || options.maxlength || ( (options.editMask)? options.editMask.length:undefined );
 	
@@ -82,12 +94,18 @@ function Edit(id,options){
 	if (options.cmdAutoComplete!=undefined && !options.cmdAutoComplete){
 		options.inputEnabled = false;
 	}
-								
+		
+	this.m_formatterOptions = options.formatterOptions;
+	this.m_formatterGetRawValue = options.formatterGetRawValue;
+		
 	Edit.superclass.constructor.call(this, id, options.tagName || this.DEF_TAG_NAME, options);
 			
 	if (options.editMask){
 		this.setEditMask(options.editMask);
 	}
+	
+	this.setRegExpression(options.regExpression);
+	this.setRegExpressionInvalidMessage(options.regExpressionInvalidMessage);
 	
 	if (options.label){
 		this.setLabel(options.label);
@@ -101,6 +119,9 @@ function Edit(id,options){
 	}
 	
 	this.setErrorControl((options.errorControl!==undefined)? options.errorControl: ((this.m_html)? null:new ErrorControl(id+":error")) );
+	this.m_infoControls = options.infoControls || new ControlContainer(this.getId()+":info", "span", {
+		"elements": options.infoControlElements || [this.m_errorControl]
+	});
 	
 	this.setButtonOpen(options.buttonOpen);
 	this.setButtonSelect(options.buttonSelect);
@@ -131,33 +152,44 @@ function Edit(id,options){
 		this.setInputEnabled(false);
 	}
 	
-	if (options.cmdAutoComplete || options.autoComplete){
+	if (options.cmdAutoComplete||options.autoComplete){
 		if (!options.acPublicMethod && options.acController){
 			options.acPublicMethod = options.acController.getPublicMethod("complete");
 		}
-		options.autoComplete = options.autoComplete || new actbAJX(
-			{"minLengthForQuery":options.acMinLengthForQuery,
-			"onSelect":options.onSelect,
-			"model":options.acModel,
-			"publicMethod":options.acPublicMethod,
-			"patternFieldId":options.acPatternFieldId,
-			"control":this,
-			"keyFields":options.acKeyFields,
-			"descrFields":options.acDescrFields,
-			"descrFunction":options.acDescrFunction,
-			"icase":options.acICase,
-			"mid":options.acMid  
-			}
-		);
+		var self = this;
+		options.autoComplete = options.autoComplete || (new actbAJX({
+					"minLengthForQuery":options.acMinLengthForQuery,
+					"onSelect":function(fields){
+						self.onSelectValue(fields);
+					},
+					"model":options.acModel,
+					"publicMethod":options.acPublicMethod,
+					"patternFieldId":options.acPatternFieldId,
+					"control":this,
+					"keyFields":options.acKeyFields,
+					"descrFields":options.acDescrFields,
+					"descrFunction":options.acDescrFunction,
+					"icase":options.acICase,
+					"mid":options.acMid,
+					"count":options.acCount,
+					"enabled":options.acEnabled,
+					"resultFieldIdsToAttr":options.acResultFieldIdsToAttr,
+					"onCompleteTextOut":options.acOnCompleteTextOut,
+					"onBeforeSendQuery": options.acOnBeforeSendQuery,
+					"onSendQueryResult": options.acOnSendQueryResult
+					})
+				);
 		actb(this.m_node,options.winObj,options.autoComplete);
 	}
-	
 	this.setAutoComplete(options.autoComplete);
 		
+	this.setOnReset(options.onReset);
+	this.setOnSelect(options.onSelect);
 }
 extend(Edit,Control);
 
 /* constants */
+
 Edit.prototype.DEF_TAG_NAME = "INPUT";
 Edit.prototype.DEF_INPUT_TYPE = "text";
 Edit.prototype.DEF_CLASS = "form-control";
@@ -172,6 +204,7 @@ Edit.prototype.DEF_LABEl_ALIGN = "left";
 
 /* private methods */
 Edit.prototype.m_editMask;
+Edit.prototype.m_regExpression;
 Edit.prototype.m_buttons;
 Edit.prototype.m_value;
 Edit.prototype.m_label;
@@ -189,8 +222,6 @@ Edit.prototype.m_enabled;
 Edit.prototype.m_labelAlign;
 Edit.prototype.m_btnContClassName;
 
-Edit.prototype.m_onKeyPress;
-
 Edit.prototype.m_autoComplete;
 
 Edit.prototype.addButtonContainer = function(){
@@ -204,7 +235,6 @@ Edit.prototype.addButtonContainer = function(){
 
 /*derived classes can change contol order*/
 Edit.prototype.addButtonControls = function(){
-
 	if (this.m_buttonOpen) this.m_buttons.addElement(this.m_buttonOpen);
 	if (this.m_buttonSelect) this.m_buttons.addElement(this.m_buttonSelect);
 	if (this.m_buttonClear) this.m_buttons.addElement(this.m_buttonClear);
@@ -212,6 +242,19 @@ Edit.prototype.addButtonControls = function(){
 
 
 /* public methods */
+Edit.prototype.setRegExpression = function(v){
+	this.m_regExpression = v
+}
+Edit.prototype.getRegExpression = function(mask){
+	return this.m_regExpression;
+}
+Edit.prototype.setRegExpressionInvalidMessage = function(v){
+	this.m_regExpressionInvalidMessage = v
+}
+Edit.prototype.getRegExpressionInvalidMessage = function(mask){
+	return this.m_regExpressionInvalidMessage;
+}
+
 Edit.prototype.setEditMask = function(mask){
 	this.m_editMask = mask
 }
@@ -220,10 +263,27 @@ Edit.prototype.getEditMask = function(mask){
 }
 
 Edit.prototype.applyMask = function(){
-	if (this.getEditMask()){
+	if(window["Cleave"] && this.m_formatterOptions){
+		this.m_cleave = new Cleave(this.m_node, this.m_formatterOptions);
+	}
+	else if (this.getEditMask()){
+		//maske input
 		$(this.getNode()).mask(this.getEditMask());
 	}
 }
+Edit.prototype.getFormattedValue = function(){
+	var res;
+	if (this.getEditMask()){
+		res = this.m_node.value;//as is
+	}
+	else{
+		//possible overridden formatting
+		res = this.formatOutputValue(this.getValue());
+	}
+	
+	return res;
+}
+
 Edit.prototype.formatOutputValue = function(val){
 	return val;
 }
@@ -231,10 +291,16 @@ Edit.prototype.setValue = function(val){
 	if (this.m_validator){
 		val = this.m_validator.correctValue(val);
 	}
-	this.getNode().value = this.formatOutputValue(val);
-	//console.log("Edit.prototype.setValue val="+this.getNode().value+", "+val)
-	this.applyMask();
 	
+	if(this.m_cleave){
+		this.m_cleave.setRawValue((this.m_formatterOptions.prefix? this.m_formatterOptions.prefix:"")+val);
+	}else{
+		
+		var v = this.formatOutputValue(val);
+		this.getNode().value = v;	
+		this.applyMask();
+	}
+		
 	if (this.m_eventFuncs && this.m_eventFuncs.change){
 		this.m_eventFuncs.change();
 	}
@@ -242,17 +308,34 @@ Edit.prototype.setValue = function(val){
 }
 
 Edit.prototype.getValue = function(){
-	if (this.m_node){
-		var v = this.getEditMask()? $(this.m_node).mask():this.m_node.value;
-		
-		if (!v || v.length==0){
-			return null;
-		}		
-		else if (this.m_validator){
-			return this.m_validator.correctValue(v);
-		}
-		else{
-			return v;
+	if (this.m_node){	
+		if(this.m_cleave){
+			var v = this.m_formatterGetRawValue?
+				(!this.m_formatterOptions.prefix? this.m_cleave.getRawValue() : this.m_cleave.getRawValue().substring(this.m_formatterOptions.prefix.length))
+				: this.m_node.value;
+			
+			if (!v || v.length==0){
+				return null;
+			}		
+			else if (this.m_validator){
+				return this.m_validator.correctValue(v);
+			}
+			else{
+				return v;
+			}
+			
+		}else{
+			var v = this.getEditMask()? $(this.m_node).mask():this.m_node.value;
+			
+			if (!v || v.length==0){
+				return null;
+			}		
+			else if (this.m_validator){
+				return this.m_validator.correctValue(v);
+			}
+			else{
+				return v;
+			}
 		}
 	}
 }
@@ -285,15 +368,32 @@ Edit.prototype.getValidator = function(){
 }
 
 Edit.prototype.validate = function(){
+	var res = true;
 	if(this.m_validator){
 		try{
 			this.setValid();
-			this.m_validator.validate(this.getValue());
+			var v = this.getValue();
+			this.m_validator.validate(v);
+			
+			if(this.m_regExpression && this.m_node.value && this.m_node.value.length){
+				var reg;
+				//debugger
+				if(typeof(this.m_regExpression) == "string"){
+					reg = new RegExp(this.m_regExpression);
+				}else{
+					reg = this.m_regExpression;
+				}
+				if (reg.test && !reg.test(this.m_node.value)){
+					throw new Error(this.getRegExpressionInvalidMessage()||this.ER_REGEXP_INVALID);
+				}
+			}
 		}
 		catch(e){
 			this.setNotValid(e.message);
+			res = false;
 		}
 	}
+	return res;
 }
 
 Edit.prototype.setButtonOpen = function(v){
@@ -348,8 +448,8 @@ Edit.prototype.toDOM = function(parent){
 	var node_parent;
 	if (!this.m_html){	
 		var id = this.getId();	
-//console.log("Edit.prototype.toDOM ID="+id+" m_labelAlign="+this.m_labelAlign)	
-		this.m_container = new ControlContainer( ((id)? id+":cont" : null),this.m_contTagName,{
+
+		this.m_container = new ControlContainer( (id? id+":cont" : null),this.m_contTagName,{
 			"className":this.m_contClassName,
 			"visible":this.getVisible()
 		});	
@@ -358,7 +458,7 @@ Edit.prototype.toDOM = function(parent){
 			this.m_container.addElement(this.m_label);
 		}
 
-		this.m_editContainer = new Control( ( (id)? id+":edit-cont" : null),this.m_editContTagName,{
+		this.m_editContainer = new Control( ( id? id+":edit-cont" : null),this.m_editContTagName,{
 				"className":this.m_editContClassName
 		});	
 		this.m_container.addElement(this.m_editContainer);
@@ -370,19 +470,31 @@ Edit.prototype.toDOM = function(parent){
 	Edit.superclass.toDOM.call(this,node_parent);
 	
 	//error
+	/*
 	if (this.m_errorControl){
-		this.m_errorControl.toDOM(node_parent);
+		//this.m_errorControl.toDOM(node_parent);
 	}
-	
+	*/
 	this.applyMask();
 	
+	//buttons after control
 	if (this.m_buttons && !this.m_buttons.isEmpty()){
 		this.m_buttons.toDOMAfter(this.getNode());
 	}
 	
+	//buttons before control
+	if (this.m_buttonsBefore && !this.m_buttonsBefore.isEmpty()){
+		this.m_buttonsBefore.toDOMBefore(this.getNode());
+	}
+
 	if (this.m_label && this.m_labelAlign=="right"){
 		this.m_label.toDOMAfter(this.getNode());
 	}
+	//error
+	//if (this.m_errorControl){
+	//	this.m_errorControl.toDOM(this.m_container.getNode());
+	//}
+	this.m_infoControls.toDOM(this.m_container.getNode());
 }
 
 Edit.prototype.toDOMBefore = function(node){
@@ -427,6 +539,11 @@ Edit.prototype.toDOMBefore = function(node){
 }
 
 Edit.prototype.delDOM = function(){
+
+	if (this.m_autoComplete){
+		this.m_autoComplete.delDOM();
+	}
+
 	Edit.superclass.delDOM.call(this);
 	
 	if (this.m_buttons){
@@ -480,6 +597,8 @@ Edit.prototype.getEnabled = function(){
 Edit.prototype.reset = function(){
 	this.setValue("");
 	this.focus();
+	this.valueChanged();
+	if(this.m_onReset)this.m_onReset();
 }
 Edit.prototype.isNull = function(){
 	var v = this.getValue();
@@ -555,22 +674,55 @@ Edit.prototype.getAutoComplete = function(){
 	return this.m_autoComplete;
 }
 
+Edit.prototype.setOnReset = function(v){
+	this.m_onReset = v;
+}
+Edit.prototype.getOnReset = function(){
+	return this.m_onReset;
+}
+
 /*
 overriden
 */
 Edit.prototype.setOnValueChange = function(v){
 	Edit.superclass.setOnValueChange.call(this,v);
 	
+	var self = this;
+	this.m_onInputChange = function(){
+		self.valueChanged();
+	}
 	if (v){
 		//add onPress event to input
-		EventHelper.add(this.getNode(),"keypress",this.m_onKeyPress,true);
+		EventHelper.add(this.getNode(),"keyup",this.m_onInputChange);
 	}
 	else{
 		//remove event if any
-		EventHelper.del(this.getNode(),"keypress",this.m_onKeyPress,true);
-	}
+		EventHelper.del(this.getNode(),"keyup",this.m_onInputChange);
+	}		
 }
 Edit.prototype.focus = function(){
-	this.getNode().focus();
+	if(this.getNode().focus)this.getNode().focus();
 }
+
+Edit.prototype.setMaxLength = function(v){
+	this.setAttr("maxlength",v);
+	if(this.m_validator)this.m_validator.setMaxLength(v);
+}
+
+Edit.prototype.setOnSelect = function(v){
+	this.m_onSelect = v;
+}
+Edit.prototype.getOnSelect = function(v){
+	return this.m_onSelect;
+}
+
+Edit.prototype.onSelectValue = function(v){
+	this.valueChanged();
+	if(this.m_onSelect)this.m_onSelect(v);
+}
+
+Edit.prototype.getInfoControls = function(v){
+	return this.m_infoControls;
+}
+
 

@@ -124,7 +124,7 @@ class Manager {
 		}
 		$perm = (is_dir($fileName))? $this->buildDirPermission:$this->buildFilePermission;
 		try{
-			chgrp($fileName,$this->buildGroup);
+			@chgrp($fileName,$this->buildGroup);
 			$this->run_shell_cmd(sprintf('chmod %s %s',$perm,$fileName));				
 		}
 		catch (Exception $e){
@@ -187,6 +187,8 @@ class Manager {
 	 * @param {string} fileName
 	 */
 	public static function saveDOM(&$dom,$fileName){
+		//tidy installation
+		//sudo apt install libtidy-dev libtidy5 php-tidy
 		if (class_exists('tidy')){
 			$tidy = new tidy();
 			/*
@@ -210,9 +212,22 @@ class Manager {
 			$dom->preserveWhiteSpace = false;
 			$dom->formatOutput = true;						
 			$dom->save($fileName);
-			$this->set_file_permission($fileName);
+			//Satic??? $this->set_file_permission($fileName);
 		}
 									
 	}
+	
+	public static function insertStrToMD(&$dom,&$beforeNode,$XMLStr){
+		$fragment = $dom->createDocumentFragment();
+		$fragment->appendXml($XMLStr);
+       		$beforeNode->parentNode->insertBefore($fragment,$beforeNode);
+       		//$beforeNode->appendChild($fragment);
+	}
+	public static function appendStrToMD(&$dom,&$parentNode,$XMLStr){
+		$fragment = $dom->createDocumentFragment();
+		$fragment->appendXml($XMLStr);
+       		$parentNode->appendChild($fragment);
+	}
+	
 }
 

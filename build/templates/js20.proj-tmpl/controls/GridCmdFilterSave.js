@@ -38,15 +38,21 @@ GridCmdFilterSave.prototype.m_dataCol;
 
 /* public methods */
 GridCmdFilterSave.prototype.onCommand = function(e){
-	//alert("save");
 	var self = this;
 	this.m_cmdFilter.setFilterVisibile(false);
+	(new VariantStorage({
+		"afterFormClose":function(){
+			self.m_cmdFilter.setFilterVisibile(true);
+		},
+		"variantStorageName":this.m_variantStorageName
+	})).saveStorage(this.m_dataCol, this.m_cmdFilter.getFilter().getValue());
+	
+	/*
 	this.m_view = new VariantStorageSaveView("VariantStorageSaveView",{
 		"variantStorageName":this.m_variantStorageName,
 		"onClose":function(){				
 			self.formClose();
-		},
-		"app":this.getApp()
+		}
 	});
 	this.m_form = new WindowFormModalBS(CommonHelper.uniqid(),{
 		"cmdCancel":true,
@@ -65,16 +71,16 @@ GridCmdFilterSave.prototype.onCommand = function(e){
 		"contentHead":this.m_view.HEAD_TITLE
 	});
 
-	this.m_form.open();
-	
+	this.m_form.open();	
+	*/
 }
 
 GridCmdFilterSave.prototype.setCmdFilter = function(v){
 	this.m_cmdFilter = v;
 }
-
-GridCmdFilterSave.prototype.saveVariant = function(v){
-	var pm = (new VariantStorage_Controller(window.getApp())).getPublicMethod("upsert_"+this.m_dataCol);
+/*
+GridCmdFilterSave.prototype.saveVariant = function(){
+	var pm = (new VariantStorage_Controller()).getPublicMethod("upsert_"+this.m_dataCol);
 	pm.setFieldValue("storage_name",this.m_variantStorageName);
 	pm.setFieldValue("variant_name",this.m_view.getElement("name").getValue());
 	pm.setFieldValue("default_variant",this.m_view.getElement("default_variant").getValue());
@@ -91,3 +97,4 @@ GridCmdFilterSave.prototype.formClose = function(){
 	this.m_form.close();
 	this.m_cmdFilter.setFilterVisibile(true);
 }
+*/

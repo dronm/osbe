@@ -44,32 +44,32 @@ function BankList_View(id,options){
 					"elements":[
 						new GridCellHead(id+":grid:head:bik",{
 							"columns":[
-								new GridColumn("bik",{"field":model.getField("bik")})
+								new GridColumn({"field":model.getField("bik")})
 							],
 							"sortable":true,
 							"sort":"asc"
 						}),					
 						new GridCellHead(id+":grid:head:gr_descr",{
 							"columns":[
-								new GridColumn("gr_descr",{"field":model.getField("gr_descr")})
+								new GridColumn({"field":model.getField("gr_descr")})
 							],
 							"sortable":true
 						}),											
 						new GridCellHead(id+":grid:head:name",{
 							"columns":[
-								new GridColumn("name",{"field":model.getField("name")})
+								new GridColumn({"field":model.getField("name")})
 							],
 							"sortable":true
 						}),
 						new GridCellHead(id+":grid:head:korshet",{
 							"columns":[
-								new GridColumn("korshet",{"field":model.getField("korshet")})
+								new GridColumn({"field":model.getField("korshet")})
 							],
 							"sortable":true
 						}),
 						new GridCellHead(id+":grid:head:gor",{
 							"columns":[
-								new GridColumn("gor",{"field":model.getField("gor")})
+								new GridColumn({"field":model.getField("gor")})
 							],
 							"sortable":true
 						})

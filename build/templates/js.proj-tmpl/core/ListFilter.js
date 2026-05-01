@@ -35,7 +35,7 @@ ListFilter.prototype.getParamValue = function(id,paramId){
 }
 
 ListFilter.prototype.getParams = function(struc){		
-	struc.field_sep = "@";
+	struc.field_sep = struc.field_sep||"@";
 	for (var ctrl_id in this.m_params){
 		var val;
 		if (this.m_params[ctrl_id].valueFieldId){

@@ -1,15 +1,16 @@
 /**	
  * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2017
 
- * @extends
- * @requires core/extend.js  
+ * @extends ControlContainer
+ * @requires core/extend.js
+ * @requires ControlContainer.js     
 
  * @class
  * @classdesc
  
  * @param {string} id - Object identifier
  * @param {object} options
- * @param {object|array} options.possibleDataTypes
+ * @param {object} options.possibleDataTypes
  * @param {function} options.onSelect
  */
 function EditCompound(id,options){
@@ -58,18 +59,29 @@ EditCompound.prototype.createControl = function(){
 	if (tp){
 		CommonHelper.merge(ctrl_opts,this.m_possibleDataTypes[tp].ctrlOptions);
 		ctrl_opts.onSelect = ctrl_opts.onSelect || this.m_onSelect;
+		if (!this.m_possibleDataTypes[tp]){
+			throw new Error(CommonHelper.format(this.ER_TYPE_NOT_FOUND,tp));
+		}
 		this.m_control = new this.m_possibleDataTypes[tp].ctrlClass(ctrl_id,ctrl_opts);	
 		/*
 		if (ctrlVal){
 			this.m_control.setValue(ctrlVal);
 		}
 		*/
-		var btn_cont = this.m_control.getButtons();
-		if (!btn_cont){
-			this.m_control.addButtonContainer();
-			btn_cont = this.m_control.getButtons();
-		}
-		btn_cont.addElement(btn_sel);
+		if(this.m_control.getButtons){
+			var btn_cont = this.m_control.getButtons();
+			if (!btn_cont){
+				this.m_control.addButtonContainer();
+				btn_cont = this.m_control.getButtons();
+			}
+			btn_cont.addElement(btn_sel);
+		}else{
+			this.m_control.m_buttons = new ControlContainer(this.m_control.getId()+":btn-cont","SPAN",
+				{"className":"input-group-btn",
+					"enabled":this.m_control.getEnabled()
+				}
+			);
+		}	this.m_control.m_buttons.addElement(btn_sel);	
 	}
 	else{		
 		//ctrl_opts.inputEnabled = false;
@@ -85,7 +97,9 @@ EditCompound.prototype.createControl = function(){
 
 /* public methods */
 EditCompound.prototype.toDOM = function(parent){
-	this.createControl();
+	if(!this.m_control){
+		this.createControl();
+	}
 	this.clear();
 	this.addElement(this.m_control);
 

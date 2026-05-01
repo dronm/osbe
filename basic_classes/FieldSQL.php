@@ -37,8 +37,8 @@ class FieldSQL extends Field{
 	private $fastEdit=FALSE;
 	private $fastEditModelId;
 	
-	public function __construct($dbLink,$dbName, $tableName, $fieldName,
-						$dataType, $options=false) {
+	public function __construct($dbLink,$dbName, $tableName, $fieldName,$dataType, $options=FALSE) {
+	
 		//parent::__construct($dbName.'.'.$tableName.'.'.$fieldName,$dataType,$options);
 		parent::__construct($fieldName,$dataType,$options);
 		
@@ -101,6 +101,38 @@ class FieldSQL extends Field{
 		}
 		*/
 	}
+	public function __serialize() {
+		//remove dbLink - it cannot be serialized	
+		return array(
+			'id' => $this->getId(),
+			'dataType' => $this->getDataType(),
+			'value' => $this->getValue(),
+			'primaryKey' => $this->getPrimaryKey(),
+			'length' => $this->getLength(),
+				'required' => $this->getRequired(),
+				'defaultValue' => $this->getDefaultValue(),
+				'readOnly' => $this->getReadOnly(),
+				'minLength' => $this->getMinLength(),
+				'sysCol' => $this->getSysCol(),
+				'noValueOnCopy' => $this->getNoValueOnCopy(),
+				'dbName' => $this->dbName,
+				'tableName' => $this->tableName,
+				'fieldName' => $this->fieldName,
+				'expression' => $this->expression,
+				'pattern' => $this->pattern,
+				'autoInc' => $this->autoInc,
+				'fieldType' => $this->fieldType,
+				'lookUpDbName' => $this->lookUpDbName,
+				'lookUpTableName' => $this->lookUpTableName,
+				'lookUpKeys' => $this->lookUpKeys,
+				'lookUpIdValue' => $this->lookUpIdValue,
+				'oldValue' => $this->oldValue,
+				'sqlExpression' => $this->sqlExpression,
+				'retAfterInsert' => $this->retAfterInsert,
+				'fastEdit' => $this->fastEdit,
+				'fastEditModelId' => $this->fastEditModelId
+		);
+    	}
 	
 	public function getDbLink(){
 		return $this->dbLink;
@@ -253,12 +285,19 @@ class FieldSQL extends Field{
 		return $res;	
 	}
 	
-	public function getSQLNoAlias(){
-		if ($expr = $this->getExpression())
+	public function getSQLNoAlias($short=TRUE){
+		if ($expr = $this->getExpression()){
 			return $expr;
-		else
+		}			
+		else if(!$short){
+			$tb = $this->getTableName();
+			return ( ($tb&&strlen($tb))? $this->getTableName().'.':'').$this->getId();
+		}
+		else{
 			return $this->getId();
+		}
 	}
+	
 	public function getSQL(){
 		if ($expr = $this->getExpression()){
 			return sprintf(Field::SQL_EXPR_FIELD_ALIAS,

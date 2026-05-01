@@ -1,0 +1,18 @@
+<div id="{{id}}" class="panel panel-flat">
+	<div id="{{id}}:cmd">
+		<div id="{{id}}:cmdOk"/>
+		<div id="{{id}}:cmdSave"/>
+		<div id="{{id}}:cmdCancel"/>
+	</div>
+
+	<div class="panel-heading">
+		<h3 class="panel-title">{{HEAD_TITLE}}</h3>
+	</div>
+	
+	<div class="panel-body dialogForm">
+		<div id="{{id}}:role"/>
+		<div id="{{id}}:user"/>
+		<div id="{{id}}:content"/>
+		<div id="{{id}}:content-tree"/>
+	</div>
+</div>	

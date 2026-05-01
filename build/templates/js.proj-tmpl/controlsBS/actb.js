@@ -181,6 +181,9 @@ function actbAJX(options){
 	
 	this.m_resultFieldIdsToAttr = options.resultFieldIdsToAttr;
 	this.m_fullTextSearch = options.fullTextSearch;
+	
+	this.m_updateInputOnCursor = options.updateInputOnCursor;
+	this.m_noErrorOnNotSelected = (options.noErrorOnNotSelected===true);
 }
 actbAJX.prototype.DEF_PATTERN_PARAM = 'pattern';
 actbAJX.prototype.DEF_METHOD = 'complete';
@@ -199,6 +202,8 @@ actbAJX.prototype.m_isObject;
 actbAJX.prototype.m_respModel;
 actbAJX.prototype.m_ic;
 actbAJX.prototype.m_mid;
+actbAJX.prototype.m_updateInputOnCursor;
+actbAJX.prototype.m_noErrorOnNotSelected;
 
 actbAJX.prototype.m_queryDelay;
 actbAJX.prototype.resultFieldIdsToAttr;
@@ -219,6 +224,9 @@ actbAJX.prototype.fillArrayOnPattern = function(inputNode){
 	var currValue = inputNode.value;
 	//clear ids
 	for (var i=0;i<this.m_acKeyFieldIds.length;i++){
+		if(this.m_keyFieldIds[i] == undefined){
+			continue;
+		}	
 		DOMHandler.setAttr(inputNode,"fkey_"+this.m_keyFieldIds[i],'');
 	}
 
@@ -232,6 +240,7 @@ actbAJX.prototype.fillArrayOnPattern = function(inputNode){
 	
 	if (currValue.length<this.getMinLengthForQuery()){
 		this.onFillArrayEnd();
+		//console.log("Min length not reached!");
 		return;
 	}
 	var self = this;
@@ -246,7 +255,8 @@ actbAJX.prototype.fillArrayOnPattern = function(inputNode){
 		params["mid"] = this.m_mid;
 	}
 		
-	console.log("Quering for data...");
+	//console.log("Quering for data...");
+	// debugger;
 	self.m_controller.runPublicMethod(self.m_methodId,
 		params,true,
 		function(resp){
@@ -278,7 +288,7 @@ actbAJX.prototype.fillArrayOnPattern = function(inputNode){
 		}
 	);
 }
-actbAJX.prototype.setObjectId = function(inputNode){
+actbAJX.prototype.setObjectId = function(inputNode,closeDisp){
 	this.m_respModel.setRowBOF();
 	var id_found = false;
 	var val = inputNode.value.replace(/\s+$/g, '');
@@ -291,6 +301,9 @@ actbAJX.prototype.setObjectId = function(inputNode){
 		id_found = (f_val==val);
 		if (id_found){
 			for (var i=0;i<this.m_acKeyFieldIds.length;i++){
+				if(this.m_keyFieldIds[i] == undefined){
+					continue;
+				}
 				DOMHandler.setAttr(
 					inputNode,"fkey_"+this.m_keyFieldIds[i],
 					this.m_respModel.getFieldValue(this.m_acKeyFieldIds[i])
@@ -306,24 +319,30 @@ actbAJX.prototype.setObjectId = function(inputNode){
 					this.m_respModel.getFieldValue(this.m_extraFields[i])
 				);
 			}
-			DOMHandler.removeClass(inputNode,"error");
+			if(!this.m_noErrorOnNotSelected){
+				DOMHandler.removeClass(inputNode,"error");
+			}			
 		}
 	}
-	if (!id_found){
-		WindowMessage.show({
+	if (closeDisp && !id_found){
+		/*WindowMessage.show({
 			text:"Значение не выбрано",
 			callBack:function(){
 				inputNode.value='';
 			}
-		});		
-	}
-	else if (this.m_onSelected){
+		});
+		*/		
+	}else if (closeDisp && this.m_onSelected){
 		this.m_onSelected.call(this,inputNode);
+		//console.log("this.m_onSelected.call focus")
 	}
 }
 
 actbAJX.prototype.unsetObjectId = function(inputNode){
 	for (var i=0;i<this.m_acKeyFieldIds.length;i++){
+		if(this.m_keyFieldIds[i] == undefined){
+			continue;
+		}	
 		DOMHandler.setAttr(inputNode,"fkey_"+this.m_keyFieldIds[i],"");
 	}
 	for (var i=0;i<this.m_extraFields.length;i++){
@@ -333,6 +352,9 @@ actbAJX.prototype.unsetObjectId = function(inputNode){
 actbAJX.prototype.isObjectIdSet = function(inputNode){
 	var res=true;
 	for (var i=0;i<this.m_acKeyFieldIds.length;i++){
+		if(this.m_keyFieldIds[i] == undefined){
+			continue;
+		}	
 		if (DOMHandler.getAttr(inputNode,"fkey_"+this.m_keyFieldIds[i])==""){
 			res=false;
 			break;
@@ -356,7 +378,11 @@ function actb(obj,winObj,servConnect){
 	var ajxCon = servConnect;
 	var slef = this;
 	ajxCon.onFillArrayEnd = function(){
-		DOMHandler.addClass(actb_curr,"error");
+		//console.log("DOMHandler.addClass error to "+actb_curr.id)
+		if(!ajxCon.m_noErrorOnNotSelected){
+			DOMHandler.addClass(actb_curr,"error");
+		}			
+		
 		_actb_tocomplete();
 		if (!actb_display){
 			actb_generate();
@@ -413,38 +439,24 @@ function actb(obj,winObj,servConnect){
 	actb_curr.setAttribute( "autocomplete",  "off");
 	EventHandler.addEvent(actb_curr,"focus",
 			function(){
-				//console.log("actb_curr focus add events");
+				//console.log("addEvent for ")
 				EventHandler.addEvent(winDocum,"keydown",actb_checkkey,false);
-				EventHandler.addEvent(winDocum,"keypress",actb_keypress,false);
-				//DOMHandler.removeClass(actb_curr,"error");
-				//if (actb_self.actb_keywords)_actb_tocomplete();
+				EventHandler.addEvent(winDocum,"keypress",actb_keypress,false);				
 			},
 			false
 		);
 		
 	EventHandler.addEvent(actb_curr,"blur",
 			function(){
-				//console.log("actb_curr blur remove events");
+				console.log("blur")
 				removeWinEvents();
-				//EventHandler.removeEvent(winDocum,"keydown",actb_checkkey,false);
-				//EventHandler.removeEvent(winDocum,"keypress",actb_keypress,false);
-				/*
-				if (servConnect.m_isObject
-					&&actb_curr.value.length
-					&&servConnect.m_acKeyFieldIds
-					&&servConnect.m_acKeyFieldIds.length){					
-					var k = actb_curr.getAttribute("fkey_"+servConnect.m_keyFieldIds[0]);
-					if (!k||!k.length){
-						DOMHandler.addClass(actb_curr,"error");
-					}
-				}
-				*/
 				actb_removedisp();
 			},
 			false
 		);		
 	
 	function removeWinEvents(){
+		//console.log("removeWinEvents")
 		EventHandler.removeEvent(winDocum,"keydown",actb_checkkey,false);
 		EventHandler.removeEvent(winDocum,"keypress",actb_keypress,false);	
 	}
@@ -567,11 +579,12 @@ function actb(obj,winObj,servConnect){
 					r.setAttribute(ajxCon.m_resultFieldsToAttr[i].attr,ajxCon.m_resultFieldsToAttr[i].val);
 				}
 				
-				
+				var ref_cl = null;
 				if (first && !actb_tomake){
 					//r.style.backgroundColor = actb_self.actb_hColor;
 					first = false;
 					actb_pos = counter;
+					ref_cl = "acCurrent";
 				}else if(actb_pre == i){
 					//r.style.backgroundColor = actb_self.actb_hColor;
 					first = false;
@@ -581,6 +594,10 @@ function actb(obj,winObj,servConnect){
 				}
 				r.id = 'tat_tr'+(j);
 				c = r.insertCell(-1);
+				if (ref_cl){
+					c.setAttribute("class",ref_cl);
+				}
+				
 				//c.style.color = actb_self.actb_textColor;
 				//c.style.fontFamily = actb_self.actb_fFamily;
 				//c.style.fontSize = actb_self.actb_fSize;				
@@ -703,22 +720,33 @@ function actb(obj,winObj,servConnect){
 	function actb_goup(){
 		if (!actb_display) return;
 		if (actb_pos == 1) return;
-		//winDocum.getElementById('tat_tr'+actb_pos).style.backgroundColor = actb_self.actb_bgColor;
+		DOMHandler.removeClass(winDocum.getElementById("tat_td"+actb_pos),"acCurrent");
 		actb_pos--;
 		if (actb_pos < actb_rangeu) actb_moveup();
-		//winDocum.getElementById('tat_tr'+actb_pos).style.backgroundColor = actb_self.actb_hColor;
+		DOMHandler.addClass(winDocum.getElementById("tat_td"+actb_pos),"acCurrent");
 		if (actb_toid) clearTimeout(actb_toid);
-		if (actb_self.actb_timeOut > 0) actb_toid = setTimeout(function(){actb_mouse_on_list=0;actb_removedisp();},actb_self.actb_timeOut);
+		if (actb_self.actb_timeOut > 0) actb_toid = setTimeout(function(){actb_mouse_on_list=0;actb_removedisp();},actb_self.actb_timeOut);		
+		if(ajxCon&&ajxCon.m_updateInputOnCursor){
+			actb_caretmove = 1;
+			actb_penter(null,false);		
+		}		
 	}
 	function actb_godown(){
 		if (!actb_display) return;
 		if (actb_pos == actb_total) return;
-		//winDocum.getElementById('tat_tr'+actb_pos).style.backgroundColor = actb_self.actb_bgColor;
+		var nd=winDocum.getElementById("tat_td"+actb_pos);
+		//console.dir(nd)
+		DOMHandler.removeClass(nd,"acCurrent");
 		actb_pos++;
 		if (actb_pos > actb_ranged) actb_movedown();
-		//winDocum.getElementById('tat_tr'+actb_pos).style.backgroundColor = actb_self.actb_hColor;
+		DOMHandler.addClass(winDocum.getElementById("tat_td"+actb_pos),"acCurrent");
 		if (actb_toid) clearTimeout(actb_toid);
 		if (actb_self.actb_timeOut > 0) actb_toid = setTimeout(function(){actb_mouse_on_list=0;actb_removedisp();},actb_self.actb_timeOut);
+		
+		if(ajxCon&&ajxCon.m_updateInputOnCursor){
+			actb_caretmove = 1;
+			actb_penter(null,false);		
+		}
 	}
 	function actb_movedown(){
 		actb_rangeu++;
@@ -763,10 +791,13 @@ function actb(obj,winObj,servConnect){
 		if (!actb_display) return;
 		actb_mouse_on_list = 0;
 		actb_pos = this.getAttribute('pos');
-		actb_penter();
+		actb_penter(null,true);
 	}
 	function actb_table_focus(){
 		actb_mouse_on_list = 1;
+		if(ajxCon&&ajxCon.m_updateInputOnCursor){
+			actb_penter(null,false);
+		}
 	}
 	function actb_table_unfocus(){
 		actb_mouse_on_list = 0;
@@ -785,7 +816,7 @@ function actb(obj,winObj,servConnect){
 	}
 	/* ---- */
 
-	function actb_insertword(a){
+	function actb_insertword(a,closeDisp){
 		if (ajxCon){
 			actb_curr.value = a;
 			actb_curr.focus();
@@ -828,17 +859,21 @@ function actb(obj,winObj,servConnect){
 		}
 		//added for AJAX support
 		if (ajxCon!=undefined && ajxCon.getIsObject()){
-			ajxCon.setObjectId(actb_curr);
+			ajxCon.setObjectId(actb_curr,closeDisp);
+			removeWinEvents();//added 03/03/23
 		}
-		else{
+		else if(!ajxCon.m_noErrorOnNotSelected){
 			DOMHandler.removeClass(actb_curr,"error");
 		}
-		actb_mouse_on_list = 0;
-		actb_removedisp();
+		if (closeDisp){
+			actb_mouse_on_list = 0;
+			actb_removedisp();
+		}
 	}
-	function actb_penter(evt){
+	function actb_penter(evt,closeDisp){
 		if (!actb_display) return;
-		actb_display = false;
+		if (closeDisp)
+			actb_display = false;
 		var word = '';
 		var c = 0;
 		for (var i=0;i<=actb_self.actb_keywords.length;i++){
@@ -853,7 +888,7 @@ function actb(obj,winObj,servConnect){
 				break;
 			}
 		}
-		actb_insertword(word);
+		actb_insertword(word,closeDisp);
 		l = getCaretStart(actb_curr,winDocum);
 	}
 	function actb_removedisp(){
@@ -891,19 +926,27 @@ function actb(obj,winObj,servConnect){
 			case 13: case 9:
 				if (actb_display){
 					actb_caretmove = 1;
-					actb_penter(evt);
+					actb_penter(evt,true);
 					//evt.stopPropagation();
 					return false;
 				}else{
 					return true;
 				}
 				break;
+			case 8: case 46:
+				if (ajxCon!=undefined && actb_curr.value!=""){			
+					ajxCon.fillArrayOnPattern(actb_curr);
+				}			
+				return true;
+			case 27:
+				return false;
 			default:
 				setTimeout(function(){actb_tocomplete(a)},50);
 				break;
 		}
 	}
 	function actb_tocomplete(kc){
+		/*
 		if (kc == 38 || kc == 40 || kc == 13) return;
 		
 		if(timeoutId){
@@ -925,6 +968,15 @@ function actb(obj,winObj,servConnect){
 				_actb_tocomplete();			
 			}
 		}
+		*/
+		//if (kc<46) return;
+		//added for AJAX support
+		if (ajxCon!=undefined && actb_curr.value!=""){	
+			ajxCon.unsetObjectId(actb_curr);		
+			ajxCon.fillArrayOnPattern(actb_curr);
+		}
+		//added for AJAX support		
+		_actb_tocomplete();		
 	}
 	function _actb_tocomplete(){		
 		if (ajxCon!=undefined && actb_curr.value!=""){			

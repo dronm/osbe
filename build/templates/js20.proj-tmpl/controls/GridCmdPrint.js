@@ -14,7 +14,7 @@ function GridCmdPrint(id,options){
 	options = options || {};	
 
 	options.glyph = "glyphicon-print";
-	options.showCmdControl = false;
+	options.showCmdControl = (options.showCmdControl!=undefined)? options.showCmdControl:false;
 	
 	GridCmdPrint.superclass.constructor.call(this,id,options);
 		

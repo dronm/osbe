@@ -5,10 +5,6 @@
   You can redistribute it and/or modify it under the modified BSD license.
   Usage:
     var popup = new PopUpMenu();
-    popup.add(menuText, function(target){ ... });
-    popup.addSeparator();
-    popup.bind('targetElement');
-    popup.bind(); // target is document;
 	
 */
 function PopUpMenu(options) {	
@@ -29,6 +25,22 @@ function PopUpMenu(options) {
 		}
 		return false;	
 	};
+	
+	if(options.elements && Array.isArray(options.elements)){
+		for(var i=0;i<options.elements.length;i++){
+			if (typeof(options.elements[i])=="string"){
+				this.addSeparator();
+			}
+			else if (options.elements[i] instanceof Button){
+				this.addButton(options.elements[i]);
+			}
+			else if(options.elements[i]){
+				//action object
+				this.add(options.elements[i]);
+			}
+		}
+	}
+	
 	/*
 	this.m_evHide = function(e){
 		self.hide.call(self);
@@ -81,24 +93,30 @@ PopUpMenu.prototype.bind = function(element) {
 	//EventHelper.add(document,"click",this.m_evHide,true);
 }
 
-/*action
-onClick
-image
-glyph
-caption
-*/
+/**
+ * @param{object} action
+ *		id
+ *		onClick
+ * 		image
+ * 		glyph
+ * 		caption
+ * 		disabled  
+ */
 PopUpMenu.prototype.add = function(action) {
 	this.items.push(action);
 }
 
+/**
+ * @param{Button} btn
+ */
 PopUpMenu.prototype.addButton = function(btn) {
 	this.items.push({
-			caption: btn.getCaption() || btn.getAttr("title"),
-			//image:btn.getImage(),
-			glyph:(btn.getGlyphPopUp())? btn.getGlyphPopUp():btn.getGlyph(),
-			onClick:btn.getOnClick()
-		}
-	);
+		caption: btn.getCaption() || btn.getAttr("title"),
+		"name": btn.getName(),
+		//image:btn.getImage(),
+		glyph:(btn.getGlyphPopUp())? btn.getGlyphPopUp():btn.getGlyph(),
+		onClick:btn.getOnClick()
+	});
 }
 
 PopUpMenu.prototype.addSeparator = function() {
@@ -126,7 +144,7 @@ PopUpMenu.prototype.setPos = function(e) {
 PopUpMenu.prototype.show = function(e,fixToElement) {
         if (this.current && this.current != this) return;
         this.current = this;
-        if (this.element) {
+        if (this.element&&document.getElementById(this.element.getId())) {
             //this.setPos(e);
             //this.element.style.display = "block";
             this.element.setPosition(e,fixToElement);
@@ -165,6 +183,7 @@ PopUpMenu.prototype.createMenu = function(items) {
         
         var menu = new PopOver(CommonHelper.uniqid(),{
         	"fixToElement":this.fixToElement,
+        	"zIndex":"2005",
         	"attrs":{
         		"style":
         			( (self.width)? ("width:"+self.width+"px;"):"")
@@ -213,26 +232,33 @@ PopUpMenu.prototype.createMenu = function(items) {
         */
 }
 
-/*
-glyph
-caption
-disabled
-onClick
-*/
+/**
+ * @param{object} action
+ *		id
+ *		onClick
+ * 		image
+ * 		glyph
+ * 		caption
+ * 		disabled 
+ */
 PopUpMenu.prototype.createItem = function(item) {
         var self = this;
         
 	var callback = item.onClick;
 	
         var elem = new Control(null,"a",{
-        	"attrs":{"href":"#"},
+        	"attrs":{"href":"#","item_id":item.id},
         	"enabled":!item.disabled,
         	"className":"nav-link",
         	"events":{
         		"click":function(_callback){
-					return function() {
+					return function(e) {
 		      				self.hide();
-		        			_callback(self.target);
+		      				e = EventHelper.fixMouseEvent(e);
+		      				if(!e.target.getAttribute("disabled")||e.target.getAttribute("disabled")!="disabled"){
+			      				var id = e.target.getAttribute("item_id");
+			        			_callback(self.target,id? id:e);
+			        		}
 		    			};
         		}(callback)
         	}
@@ -244,6 +270,7 @@ PopUpMenu.prototype.createItem = function(item) {
 	}
         elem.m_node.appendChild(document.createTextNode(" "+item.caption));
         return new ControlContainer(null,"li",{
+        	"enabled":!item.disabled,
         	"className":"nav-item",
         	"elements":[elem]
         });

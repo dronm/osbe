@@ -40,10 +40,10 @@ WindowFormDD.prototype.open = function(){
 	if ((!this.m_top||this.m_top==0)&&(!this.m_left||this.m_left==0)&&(!this.m_center||this.m_center==0)){		
 		for (var id in OPENED_FORMS){
 			if (OPENED_FORMS[id]){
-				var v = toInt(OPENED_FORMS[id].top)+30;
+				var v = parseInt(OPENED_FORMS[id].top,10)+30;
 				v = (v>150)? 0:v;
 				this.m_top = v;
-				v = toInt(OPENED_FORMS[id].left)+30;
+				v = parseInt(OPENED_FORMS[id].left,10)+30;
 				v = (v>150)? 0:v;
 				this.m_left = v;
 			}

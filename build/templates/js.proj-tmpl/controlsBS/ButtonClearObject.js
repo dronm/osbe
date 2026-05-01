@@ -25,7 +25,8 @@ function ButtonClearObject(id,options){
 			node.value="";
 			node.focus();
 			for (var i=0;i<options.keyFieldIds.length;i++){
-				DOMHandler.setAttr(node,"fkey_"+options.keyFieldIds[i],"");
+				DOMHandler.setAttr(node,"fkey_"+options.keyFieldIds[i],"null");
+				DOMHandler.setAttr(node,"last_fkey_"+options.keyFieldIds[i],"null");
 			}
 	};
 	options.attrs = options.attrs || {};

@@ -107,5 +107,105 @@
 	js GridColumn contstructor only one syntax support
 	
 2.1.14 13/12/2017
-	ControllerDb signature of functions insert,delete,update is compatible with derived mwthods ,i.e insert($pm)
+	ControllerDb signature of functions insert,delete,update is compatible with derived methods ,i.e insert($pm)
 	signature of write() of classes View,ViewPDF,viewHTML,ViewExcel,ViewJSForm(? depricated),ViewJSON
+	
+2.1.16 07/11/2018	
+	cmd.php
+	Controller.php
+	File download headers
+	
+	Model.php
+	compatibility with ModelSQL
+	
+2.1.17 29/01/2019
+	ModelSQL->modelGetObject($model,$pm=NULL,$toXML=TRUE)	
+	
+	
+2.1.19 20/05/2019	
+	ControllerSQL->conditionFromParams
+	ControllerSQL->orderFromParams
+	JSON field type support in conditions. Now condition can include queries like field->descr,field->keys-id. That is parameter cond_fields=field->descr
+	Order in JSON fields is olso supported
+	
+
+2.1.20 27/05/2019		
+	ModelSQL->addGlobalFilter NULL value check
+	
+	
+2.1.21 03/06/2019			
+	ModelSQL->select modeCopy parameter,
+	Filed->noValueOnCopy
+	Model xslt template
+	Metadata.DTD noValueOnCopy
+
+2.1.22 08/06/2019
+	ModelSQL->select some modifications for using this function with custom select query, not view
+	
+2.1.23 22/06/2019
+	ModelSQL->setAggFunctions
+	
+2.1.23 27/06/2019
+	ModelSQL->addGlobalFilter если поле expression была ошибка
+	
+2.1.24	25/11/2019 Constants ERR_AUTH_BANNED
+
+	12/12/2019 db/db_pgsql some improvements
+
+
+2.1.25 18/04/2020
+	Model.php added private class member caclHash, setCalcHash(),getCalcHash()
+	ModelSQL.php dataToXML() calcs md5 hash on dataset
+	
+2.1.26 17/07/2020
+	ValidatorBool.php value '0' converts to data base NULL. Corrected !$val into (!$val&&$val!=='0')
+
+2.1.26.1 29/07/2020	
+	db/SessManager.php check if session_id() is empty after session_start(). if so exception is thrown.
+	
+	28/09/2020
+	VariantStorage->applyPredefinedPeriodValues
+	$filter_data = json_decode($storage['filter_data'],TRUE);
+	type check
+	
+2.1.26.2 19/10/2020
+	basic_classes/ModelSLQ->addStoredFilter STORAGE_CLASS constant support
+	
+2.1.26.3 28/10/2020
+	basic_classes/ModelSLQ->complete when NOT ic on integers - gives error, added ::text cast
+	
+2.1.26.5 09/11/2020-13/11/2020
+	cmd.php CUSTOM_CONTROLLER can be from framework/basic_classes path
+	ViewBase.php template uses global variable dbLink
+	SessManager->findSession param dbLink removed
+
+2.1.26.6 20/02/2021
+	ModelSQL getTableFullPath() If DB_SCHEMA defined in Config.php then it is used as default schema, otherwise d
+
+2.1.26.7 27/02/2021
+	web socket ssl support
+	ev_publish.php
+	EventSrv.php
+	ControllerDb.php
+
+2.1.26.8 22/03/2021
+	Controller open public methods (guest role) are blocked, cmd.php line 160 corrected
+	
+
+
+2.1.26.9 05/08/2022
+	ControllerDb.php function getReadOnlyDbServer()
+	insert, update, delete methods: new model is added Lsn_Model addLsnModel()
+	
+	js version 2.1.014
+		GridAjx.js addLsnToReadPublicMethod()
+		ViewObjectAjx.js onAfterUpsert() lsn value is added to m_editResult
+	
+	
+2.1.27.1 27/05/2024
+	db/pg_sql.php port in conncetion
+	cmd.php
+	ModelSQL.php
+	ControllerDb.php
+	lsn postion
+

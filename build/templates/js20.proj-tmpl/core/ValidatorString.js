@@ -18,7 +18,7 @@ ValidatorString.prototype.validate = function(val){
 	ValidatorString.superclass.validate.call(this,val);
 	
 	if (this.getRequired() && val==""){
-		console.trace();
+		//console.trace();
 		throw new Error(this.ER_EMPTY);
 	}
 }

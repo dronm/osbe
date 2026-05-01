@@ -14,6 +14,7 @@
  * @param {object} options
  * @param {string} [options.labelClassName=control-label col-lg-11]
  * @param {string} [options.editContClassName=input-group col-lg-1]
+ * @param {bool} [options.checked=false] 
  */
 function EditRadio(id,options){
 	options = options || {};
@@ -29,6 +30,11 @@ function EditRadio(id,options){
 	EditRadio.superclass.constructor.call(this,id,options);
 	
 	
+	if (options.value && CommonHelper.isIE()){
+		//ie hack
+		this.m_node.value = options.value;
+	}
+	
 	if (options.checked){
 		this.setChecked(options.checked);
 	}
@@ -37,7 +43,7 @@ function EditRadio(id,options){
 extend(EditRadio,EditString);
 
 /* constants */
-
+EditRadio.prototype.ATTR_DISABLED = "disabled";//
 
 /* public */
 EditRadio.prototype.setChecked = function(checked){

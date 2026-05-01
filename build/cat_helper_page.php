@@ -15,6 +15,7 @@
 	define('PARAM_CAT_BASE_MODEL_ID','base_model_id');
 	define('PARAM_CAT_LIST_MODEL','list_model');
 	define('PARAM_CAT_LIST_VIEW','list_view');
+	define('PARAM_CAT_LIST_FORM','list_form');
 	define('PARAM_CAT_SRV_LIST_TEMPLATE','server_template_list');
 	define('PARAM_CAT_SRV_DIALOG_TEMPLATE','server_template_dialog');
 	define('PARAM_CAT_VIEWS','views');
@@ -23,6 +24,7 @@
 
 	define('PARAM_CAT_DIALOG_MODEL','dialog_model');
 	define('PARAM_CAT_DIALOG_VIEW','dialog_view');
+	define('PARAM_CAT_DIALOG_FORM','dialog_form');
 	
 	define('PARAM_CAT_CONTROLLER','controller');
 	
@@ -46,7 +48,11 @@
 
 		<div class="form-group">			
 			<input type="checkbox" id="'.PARAM_CAT_SRV_LIST_TEMPLATE.'" name="'.PARAM_CAT_SRV_LIST_TEMPLATE.'" value="1" checked="checked"/>
-			<label for="'.PARAM_CAT_SRV_LIST_TEMPLATE.'">Add list to servee templates</label>
+			<label for="'.PARAM_CAT_SRV_LIST_TEMPLATE.'">Add list to server templates</label>
+		</div>
+		<div class="form-group">			
+			<input type="checkbox" id="'.PARAM_CAT_LIST_FORM.'" name="'.PARAM_CAT_LIST_FORM.'" value="1" checked="checked"/>
+			<label for="'.PARAM_CAT_LIST_FORM.'">Create list form</label>
 		</div>
 
 		<div class="form-group">			
@@ -74,6 +80,10 @@
 		<div class="form-group">			
 			<input type="checkbox" id="'.PARAM_CAT_SRV_DIALOG_TEMPLATE.'" name="'.PARAM_CAT_SRV_DIALOG_TEMPLATE.'" value="1" checked="checked"/>
 			<label for="'.PARAM_CAT_SRV_DIALOG_TEMPLATE.'">Add dialog to server templates</label>
+		</div>
+		<div class="form-group">			
+			<input type="checkbox" id="'.PARAM_CAT_DIALOG_FORM.'" name="'.PARAM_CAT_DIALOG_FORM.'" value="1" checked="checked"/>
+			<label for="'.PARAM_CAT_DIALOG_FORM.'">Create dialog form</label>
 		</div>
 
 		<div class="form-group">			

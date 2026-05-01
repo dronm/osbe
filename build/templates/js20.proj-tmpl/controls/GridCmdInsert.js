@@ -16,7 +16,7 @@ function GridCmdInsert(id,options){
 	
 	options.glyphPopUp = "glyphicon-plus";
 	options.caption = this.CAPTION;
-	options.showCmdControl = true;
+	options.showCmdControl = (options.showCmdControl!=undefined)? options.showCmdControl:true;
 	
 	GridCmdInsert.superclass.constructor.call(this,id,options);
 		

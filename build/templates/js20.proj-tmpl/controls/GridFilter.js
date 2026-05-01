@@ -1,15 +1,21 @@
-/* Copyright (c) 2012 
-	Andrey Mikhalevich, Katren ltd.
-*/
-/*	
-	Description
-*/
-//ф
-/** Requirements
-* @requires controls/ControlContainer.js 
-*/
+/**	
+ * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2012
+ 
+ * @class
+ * @classdesc
+ 
+ * @requires core/extend.js
+ * @requires ControlContainer.js 
 
-/* constructor */
+ * @extends ControlContainer
+  
+ * @param {string} id Object identifier
+ * @param {namespace} options
+ * @param {bool} [cmdSet=true]
+ * @param {bool} [cmdUnset=true]
+ * @param {Control} [controlSet=ButtonCmd]
+ * @param {Control} [controlUnset=ButtonCmd]   
+ */
 function GridFilter(id,options){
 	options = options || {};
 	
@@ -29,8 +35,7 @@ function GridFilter(id,options){
 			"onClick":function(){
 				self.setFilter();				
 			},
-			"attrs":{"title":this.DEF_SET_CTRL_TITLE},
-			"app":options.app
+			"attrs":{"title":this.DEF_SET_CTRL_TITLE}
 			})
 		);	
 	}
@@ -42,16 +47,14 @@ function GridFilter(id,options){
 			"onClick":function(){
 				self.unsetFilter();
 			},
-			"attrs":{"title":this.DEF_UNSET_CTRL_TITLE},
-			"app":options.app
+			"attrs":{"title":this.DEF_UNSET_CTRL_TITLE}
 			})
 		);	
 	}
 
 	/* filter */
 	this.m_filter = new ModelFilter({
-		"filters":options.filters,
-		"app":options.app
+		"filters":options.filters
 	});
 				
 	this.addControls();	
@@ -73,7 +76,7 @@ GridFilter.prototype.addControls = function(){
 		this.addElement(filters[id].binding.getControl());
 	}
 	
-	this.m_contCommands = new ControlContainer(this.getId()+":cont-cmd","div",{"className":window.getBsCol()+"12"});
+	this.m_contCommands = new ControlContainer(this.getId()+":cont-cmd","DIV",{"className":window.getBsCol()+"12"});
 	
 	if (this.m_controlSet) this.m_contCommands.addElement(this.m_controlSet);
 	if (this.m_controlUnset) this.m_contCommands.addElement(this.m_controlUnset);
@@ -115,7 +118,7 @@ GridFilter.prototype.getOnRefresh = function(){
 }
 
 GridFilter.prototype.setFilter = function(){
-	if (this.m_onRefresh){
+	if (this.m_onRefresh){		
 		this.m_onRefresh();
 	}
 }

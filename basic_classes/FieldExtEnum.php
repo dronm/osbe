@@ -48,7 +48,7 @@ class FieldExtEnum extends FieldExt {
 	}
 	
 	public function validate($val){
-		if (strtolower($val)!='null'){
+		if (!is_null($val) && strtolower($val)!='null'){
 			$val = parent::validate($val);
 			//one of the enum checking
 			if (!$this->isInEnum($val)){

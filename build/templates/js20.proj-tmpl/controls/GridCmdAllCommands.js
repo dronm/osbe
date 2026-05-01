@@ -1,20 +1,17 @@
-/* Copyright (c) 2016 
-	Andrey Mikhalevich, Katren ltd.
-*/
-/*	
-	Description
-*/
-/** Requirements
- * @requires 
- * @requires core/extend.js  
-*/
+/**	
+ * @author Andrey Mikhalevich <katrenplus@mail.ru>
+ 
+ * @class
+ * @classdesc grid head object
+ 
+ * @requires GridCmd.js
+ * @requires GridCmd.js 
 
-/* constructor
-@param string id
-@param object options{
-
-}
-*/
+ * @extends ControlContainer
+  
+ * @param {string} id Object identifier
+ * @param {object} options
+ */
 function GridCmdAllCommands(id,options){
 	options = options || {};	
 

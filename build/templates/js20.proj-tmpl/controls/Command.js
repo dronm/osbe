@@ -1,18 +1,16 @@
-/* Copyright (c) 2016 
-	Andrey Mikhalevich, Katren ltd.
-*/
-/*	
-	Description
-*/
-/** Requirements
- * @requires 
-*/
+/**	
+ * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2016
 
-/* constructor
-@param object options{
-
-}
-*/
+ * @class
+ * @classdesc
+ 
+ * @param {object} options
+ * @param {string} options.id
+ * @param {Control} options.control
+ * @param {publicMethod} options.publicMethod
+ * @param {array} options.bindings
+ * @param {bool} options.async   
+ */
 function Command(id,options){
 	if (typeof(id)=="object"){
 		options = id;
@@ -88,4 +86,8 @@ Command.prototype.getId = function(){
 }
 Command.prototype.setId = function(v){
 	this.m_id = v;
+}
+
+Command.prototype.run = function(opts){
+	this.m_publicMethod.run(opts);
 }

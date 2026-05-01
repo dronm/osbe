@@ -56,9 +56,7 @@ Controller.prototype.setId = function(id){
 	this.m_id = id;
 }
 
-Controller.prototype.runPublicMethod = function(methodName,
-	paramObj,async,retFunc,retCont,retOnError,xmlResponse,
-	isGet){
+Controller.prototype.runPublicMethod = function(methodName, paramObj,async,retFunc,retCont,retOnError,xmlResponse, isGet,enctype){
 	isGet = (isGet==undefined)? true:isGet;
 	xmlResponse = (xmlResponse==undefined)? true:xmlResponse;
 	var pm = this.getPublicMethodById(methodName);
@@ -98,14 +96,15 @@ Controller.prototype.runPublicMethod = function(methodName,
 				self.m_resp = resp;
 			}
 		},
-		this,xmlResponse);
+		this,xmlResponse,enctype);
 	return this.m_resp;
 }
 Controller.prototype.run = function(methId,options){
-debugger
 	options = options || {};
 	var def_err_func = function(resp,errCode,errStr){
-		WindowMessage.show({"text":errStr,"type":WindowMessage.TP_ER});
+		// WindowMessage.show({"text":errStr,"type":WindowMessage.TP_ER});
+		// window.showTempError(errStr, null, ERR_MSG_WAIT_MS);
+		throw new Error(errStr);
 	}	
 	var params = options.params || {};
 	var async = (options.async==undefined)? true:options.async;
@@ -122,8 +121,7 @@ debugger
 		}
 	}
 	
-	return this.runPublicMethod(methId,params,async,retFunc,
-			retCont,retOnError,xml,isGet);
+	return this.runPublicMethod(methId,params,async, retFunc, retCont,retOnError,xml,isGet,options.enctype);
 }
 Controller.prototype.getQuery = function(publicMethod,resultString){
 	/* validation */
@@ -175,3 +173,67 @@ Controller.prototype.getQueryString = function(publicMethod){
 Controller.prototype.getQueryStruc = function(publicMethod){
 	return this.getQuery(publicMethod,false);
 }
+
+
+Controller.prototype.openHref = function(methId,viewId,winParams){
+	var pm = this.getPublicMethodById(methId);	
+	let params = pm.getParams();
+	this.getServConnector().openHref(params, winParams);
+}
+
+//works!!!
+Controller.prototype.download = function(methId,viewId,ind,callBack){
+	ind = (ind!=undefined)? ind:"";
+	var n_id = "file_downloader"+ind;
+	var n = document.getElementById(n_id);
+	if (!n){
+		n = document.createElement("iframe");
+		n.id = n_id;
+		n.style="display:none;";
+		n.onerror = window.onerror;
+		n.onload = function(){
+			if (this.contentDocument && this.contentDocument.body && this.contentDocument.body.innerHTML && this.contentDocument.body.innerHTML.length){
+				//error
+				if (callBack){
+					callBack(1,this.contentDocument.body.innerHTML);
+				}
+				else{
+					throw new Error(this.contentDocument.body.innerHTML);
+				}								
+			}else if (this.contentDocument){
+				//!!! 502,400 Bad gateway
+				//var resp = new ResponseXML(this.contentDocument);				
+				let resp = new ServResponse();
+				//var m = resp.modelExists("ModelServResponse")? new ModelServRespXML(resp.getModelData("ModelServResponse")) : null;
+				resp.parse(this.contentDocument);
+				error_n = resp.getRespResult();
+				if (error_n!=0){
+					//error
+					if (callBack){
+						callBack(error_n, resp.getRespDescr());
+					}
+					else{
+						throw new Error(resp.getRespDescr());
+					}					
+				}
+				else if (callBack){
+					//all -ok,no xml model
+					callBack(0);
+				}
+			}
+			else if (callBack){
+				callBack(0);
+			}
+		};
+		document.body.appendChild(n);
+	}
+	var pm = this.getPublicMethodById(methId);
+	var params = pm.getParams();
+	var par_str = "";
+	for (var id in params){
+		par_str+= (par_str=="")? "":"&";
+		par_str+= params[id].getQueryString();
+	}
+	n.src = this.getServConnector().getScript()+"?"+par_str;
+}
+

@@ -16,7 +16,7 @@
 function GridCmdPrintObj(id,options){
 	options = options || {};	
 
-	options.showCmdControlInPopup = false;
+	options.showCmdControlInPopup = (options.showCmdControlInPopup!=undefined)? options.showCmdControlInPopup:false;
 
 	var self = this;
 	options.controls = [

@@ -16,7 +16,9 @@
 */
 function ButtonCmd(id,options){
 	options = options || {};
-	options.className = "btn btn-primary btn-cmd";
+	
+	options.colorClass = options.colorClass || "btn-primary";
+	options.className = "btn "+options.colorClass+" btn-cmd";
 	
 	options.caption = options.caption || this.DEF_CAPTION;	
 

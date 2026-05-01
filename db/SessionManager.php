@@ -59,11 +59,15 @@ class SessionManager{
 		$ar = $this->dbLink->query_first(
 			sprintf("SELECT data,session_key FROM sessions WHERE id = '%s' LIMIT 1",$id)
 		);
+		//file_put_contents(OUTPUT_PATH.'sess.txt','read= '.$id.PHP_EOL,FILE_APPEND);
 		if ($ar && count($ar)>0){
 			return $this->decrypt($ar['data'],$ar['session_key']);
 		}
+		
+		return '';
 	}
 	function write($id, $data) {
+	//file_put_contents(OUTPUT_PATH.'sess.txt','write= '.$id.PHP_EOL.$data.PHP_EOL,FILE_APPEND);
 		//try{
 			$ar = $this->dbLinkMaster->query_first(
 				sprintf("SELECT session_key FROM sessions WHERE id = '%s' LIMIT 1",$id)
@@ -86,7 +90,7 @@ class SessionManager{
 					sprintf("INSERT INTO logins
 					(date_time_in,ip,session_id)
 					VALUES('%s','%s','%s')",
-					date('Y-m-d H:i:s'),$_SERVER["REMOTE_ADDR"],$id)
+					date('Y-m-d H:i:s'), isset($_SERVER["REMOTE_ADDR"]) ? $_SERVER["REMOTE_ADDR"] : '127.0.0.1', $id)
 				);
 			}
 			else{
@@ -130,23 +134,27 @@ class SessionManager{
 			
 		return true;
 	}
-	private function encrypt($data, $key) {
-		//return $data;
-		$salt = 'cH!swe!retReGu7W6bEDRup7usuDUh9THeD2CHeGE*ewr4n39=E@rAsp7c-Ph@pH';
+	private function encrypt($data, $key) {	
+		return base64_encode($data);
+		//DOES NOT WORK IN PHP7!!!  no mcrypt!!!
+		/*$salt = 'cH!swe!retReGu7W6bEDRup7usuDUh9THeD2CHeGE*ewr4n39=E@rAsp7c-Ph@pH';
 		$key = substr(hash('sha256', $salt.$key.$salt), 0, 32);
 		$iv_size = mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_ECB);
 		$iv = mcrypt_create_iv($iv_size, MCRYPT_RAND);
 		$encrypted = base64_encode(mcrypt_encrypt(MCRYPT_RIJNDAEL_256, $key, $data, MCRYPT_MODE_ECB, $iv));
 		return $encrypted;
+		*/
 	}
 	private function decrypt($data, $key) {
-		//return $data;
+		return base64_decode($data);
+		/*
 		$salt = 'cH!swe!retReGu7W6bEDRup7usuDUh9THeD2CHeGE*ewr4n39=E@rAsp7c-Ph@pH';
 		$key = substr(hash('sha256', $salt.$key.$salt), 0, 32);
 		$iv_size = mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_ECB);
 		$iv = mcrypt_create_iv($iv_size, MCRYPT_RAND);
 		$decrypted = mcrypt_decrypt(MCRYPT_RIJNDAEL_256, $key, base64_decode($data), MCRYPT_MODE_ECB, $iv);
 		return $decrypted;
+		*/
 	}	
 }
 ?>

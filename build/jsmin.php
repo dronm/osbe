@@ -217,14 +217,20 @@ return Form.Validator.getValidator('IsEmpty').test(element) || (/^(?:[a-z0-9!#$%
   /**
 * Is $c a letter, digit, underscore, dollar sign, or non-ASCII character.
 *
+* Andrey 29/11/2022 corrected for use with php8.1
+* is_null check is added as php8 warns when calling built-in functions with null parameters expecting strings
+*
 * @return bool
 */
   protected function isAlphaNum($c) {
-    return ord($c) > 126 || $c === '\\' || preg_match('/^[\w\$]$/', $c) === 1;
+    return is_null($c)? FALSE : (ord($c) > 126 || $c === '\\' || preg_match('/^[\w\$]$/', $c) === 1);
   }
 
   /**
 * Perform minification, return result
+*
+* Andrey 15/12/2022 corrected for use with php8.1
+* is_null check is added as php8 warns when calling built-in functions with null parameters expecting strings
 *
 * @uses action()
 * @uses isAlphaNum()
@@ -233,7 +239,8 @@ return Form.Validator.getValidator('IsEmpty').test(element) || (/^(?:[a-z0-9!#$%
 * @return string
 */
   protected function min() {
-    if (0 == strncmp($this->peek(), "\xef", 1)) {
+    $chr = $this->peek();
+    if (!is_null($chr) && 0 == strncmp($chr, "\xef", 1)) {
         $this->get();
         $this->get();
         $this->get();

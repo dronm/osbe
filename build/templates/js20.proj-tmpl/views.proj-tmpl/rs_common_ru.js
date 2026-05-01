@@ -1,3 +1,12 @@
+if(window["LoginList_View"]){
+	LoginList_View.prototype.GRID_USER_COL_CAP = "Пользователь";
+	LoginList_View.prototype.GRID_DATE_TIME_IN_COL_CAP = "Дата входа";
+	LoginList_View.prototype.GRID_DATE_TIME_OUT_COL_CAP = "Дата выхода";
+	LoginList_View.prototype.GRID_SET_DATE_TIME_COL_CAP = "Последняя активность";
+	LoginList_View.prototype.GRID_IP_COL_CAP = "IP";
+	LoginList_View.prototype.HEAD_TITLE = "Сеансы пользователей";
+}
+
 ViewList_View.prototype.OPEN_TITLE = "Открыть объект";
 ViewList_View.prototype.OPEN_WIN_TITLE = "Открыть в новом окне";
 ViewList_View.prototype.GRID_COL_CAP = "Объект";
@@ -22,3 +31,4 @@ About_View.prototype.LB_FW_SERVER_VERSION = "Версия платформы (с
 About_View.prototype.LB_FW_CLIENT_VERSION = "Версия платформы (клиент):";
 
 UserList_View.prototype.HEAD_TITLE = "Пользователи";
+

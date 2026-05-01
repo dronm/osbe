@@ -10,7 +10,7 @@
  * @param {string} id - html tag id
  * @param {object} options
  * @param {function} options.onBeforeExecCommand
- * @param {object} options.commands 
+ * @param {object} options.commands
  */
 function ViewAjx(id,options){
 	options = options || {};
@@ -59,10 +59,10 @@ ViewAjx.prototype.onGetData = function(resp,cmd){
 	cmd = (cmd===true)? "copy":cmd;
 	var cmdCopy = (cmd=="copy");
 	var cmdInsert = (cmd=="insert");
-	
+ //debugger	
 	var models = {};
 	//console.log("ViewAjx.prototype.onGetData.cmdCopy="+cmdCopy)
-	for (var i=0;i<this.m_dataBindings.length;i++){
+	for (var i=0; i<this.m_dataBindings.length; i++){
 	//console.log("dataBindings i="+i)
 		var m = this.m_dataBindings[i].getModel();		
 		if (!m){
@@ -83,6 +83,7 @@ ViewAjx.prototype.onGetData = function(resp,cmd){
 		if (models[m_id]>0){	
 			var ctrl = this.m_dataBindings[i].getControl();
 			if (ctrl){
+			//debugger
 			//console.log("Got control")
 				var init_val = null;
 				var ctrl_format_f = (ctrl.getFormatFunction)? ctrl.getFormatFunction():null;
@@ -90,12 +91,17 @@ ViewAjx.prototype.onGetData = function(resp,cmd){
 				if (ctrl_format_f){
 					init_val = ctrl_format_f.call(ctrl,this.m_dataBindings[i].getModel().getFields());
 				}
+				else if(this.m_dataBindings[i].getValue){
+					init_val = this.m_dataBindings[i].getValue.call(this.m_dataBindings[i]);
+				}
 				else{
-					//debugger;
 					this.defineField(i);
 					//console.log("ViewAjx.prototype.onGetData defineField")
 					if (this.m_dataBindings[i].getField() && !(cmdCopy && this.m_dataBindings[i].getField().getPrimaryKey()) ){						
 						init_val = this.m_dataBindings[i].getField().getValue();						
+						if (init_val!=undefined && this.m_dataBindings[i].getAssocIndex()!==undefined){
+							init_val = init_val[this.m_dataBindings[i].getAssocIndex()];
+						}
 						//console.log("ViewAjx.prototype.onGetData init_val="+init_val)
 					}			
 				}
@@ -111,11 +117,33 @@ ViewAjx.prototype.onGetData = function(resp,cmd){
 				}
 				else if (ctrl.getIsRef && ctrl.getIsRef() && this.m_dataBindings[i].getKeyIds()){
 					var init_val_o;
-					if (init_val!=undefined && typeof(init_val)=="object"){
+					//debugger
+					if( typeof init_val == "string" && init_val.substring(0,1)=="{" && init_val.substring(init_val.length-1)=="}"){
+						//string is given instead of object
+						init_val = CommonHelper.unserialize(init_val);
+					}
+					
+					if (init_val!=undefined && typeof init_val=="object"){
 						//RefType object
 						init_val_o = init_val;
-					}
-					else{
+						//For EditSELECT!!! different keys in refObject and getModelKeyFields
+						//debugger
+						if (ctrl.getModelKeyFields){
+							var model_keys = ctrl.getModelKeyFields();
+							//order match
+							var o_keys = {};
+							var init_val_k_ind = 0;
+							for(var init_val_k_id in init_val.m_keys){
+								if(model_keys.length<init_val_k_ind){
+									break;
+								}
+								o_keys[model_keys[init_val_k_ind].getId()] = init_val.m_keys[init_val_k_id];
+								init_val_k_ind++;
+							}
+							init_val_o.m_keys = o_keys;
+						}											
+						
+					}else{					
 						var key_ids = this.m_dataBindings[i].getKeyIds();						
 						if (!key_ids){
 							throw Error(CommonHelper.format(this.ER_CTRL_KEYS_NOT_BOUND,[ctrl.getName()]));	
@@ -134,7 +162,10 @@ ViewAjx.prototype.onGetData = function(resp,cmd){
 							}
 							else{
 								k_id = key_ids[n];
-							}							
+							}
+							if(!m.fieldExists(key_ids[n])){
+								throw new Error("ViewAjx: modelID: "+m.getId()+", fieldID: "+key_ids[n]+" does not exist. Read bind index: "+i);
+							}
 							keys[k_id] = m.getFieldValue(key_ids[n]);
 						}					
 						init_val_o = new RefType({
@@ -144,6 +175,9 @@ ViewAjx.prototype.onGetData = function(resp,cmd){
 						});
 					}
 					if (ctrl.setInitValue && !cmdCopy && !cmdInsert){
+						if(ctrl.setValue){
+							ctrl.setValue(null);//reset default value if any
+						}
 						ctrl.setInitValue(init_val_o);
 					}
 					else{
@@ -160,23 +194,28 @@ ViewAjx.prototype.setTempDisabled = function(cmd){
 	if (this.m_commands[cmd]){
 		var cmd_ctrl = this.m_commands[cmd].getControl();
 		if (cmd_ctrl){
-			this.m_cmdCtrlState = cmd_ctrl.getEnabled();
+			this.m_cmdCtrlState = cmd_ctrl.getEnabled();			
 			cmd_ctrl.setEnabled(false);
+			//cmd_ctrl.setEnableLock(true);
 		}
 	}	
-	this.m_controlStates = {};
+	this.m_controlStates = this.m_controlStates || {};
 	this.m_controlStates[cmd] = [];
 	if (this.m_commands[cmd].getBindings()){
 		var b = this.m_commands[cmd].getBindings();
 		for (var i=0;i < b.length;i++){
 			var ctrl = b[i].getControl();
 			//console.log(ctrl.getName());
+			if(!ctrl || ctrl.getEnableLock()){
+				continue;
+			}
 			this.m_controlStates[cmd].push({
 				"ctrl":ctrl,
 				"enabled":ctrl.getEnabled(),
 				"inputEnabled":(ctrl.getInputEnabled)? ctrl.getInputEnabled():true
 			});
 			ctrl.setEnabled(false);
+			ctrl.setEnableLock(true)
 		}	
 	}	
 }
@@ -184,19 +223,22 @@ ViewAjx.prototype.setTempDisabled = function(cmd){
 ViewAjx.prototype.setTempEnabled = function(cmd){
 	if (this.m_commands[cmd]){
 		var cmd_ctrl = this.m_commands[cmd].getControl();
-		if (cmd_ctrl && this.m_cmdCtrlState){
+		if (cmd_ctrl && this.m_cmdCtrlState){			
 			cmd_ctrl.setEnabled(true);
 		}
 	}
 	if (this.m_controlStates && this.m_controlStates[cmd]){
 		for (var i=0;i<this.m_controlStates[cmd].length;i++){
 			if (this.m_controlStates[cmd][i].enabled){
+				this.m_controlStates[cmd][i].ctrl.setEnableLock(false);
 				this.m_controlStates[cmd][i].ctrl.setEnabled(true);
 			}
 			if (this.m_controlStates[cmd][i].ctrl.setInputEnabled){
 				this.m_controlStates[cmd][i].ctrl.setInputEnabled(this.m_controlStates[cmd][i].inputEnabled);
 			}
 		}
+		this.m_controlStates[cmd] = undefined;
+		delete this.m_controlStates[cmd];
 	}
 }
 
@@ -204,11 +246,16 @@ ViewAjx.prototype.setTempEnabled = function(cmd){
 ViewAjx.prototype.getModified = function(cmd){
 	if (this.m_commands[cmd].getBindings()){
 		var b = this.m_commands[cmd].getBindings();
-		for (var i=0;i < b.length;i++){
-			//&& b[i].getControl().getEnabled()
-			if (b[i].getControl() && b[i].getControl().getModified()){
-			//console.log("Modified "+b[i].getControl().getId())
+		var pm = this.m_commands[cmd].getPublicMethod();
+		for (var i=0; i < b.length; i++){
+			if ( b[i].m_control && b[i].m_control.getModified && b[i].getControl().getModified() ){
 				return true;
+				
+			}else if (b[i].getFunc && pm) {
+				var f = b[i].getFunc();
+				if(f && f.call(this, pm, b[i].getControl? b[i].getControl(): null) ){
+					return true;
+				}
 			}
 		}
 	}
@@ -219,12 +266,12 @@ ViewAjx.prototype.getModified = function(cmd){
 
 /**
  * @param {string} cmd
- * @param {object} res {{object}old_keys, {bool}incorrect_vals, {bool}modified}
+ * @param {object} validate_res {{object}old_keys, {bool}incorrect_vals, {bool}modified}
  */
 ViewAjx.prototype.validate = function(cmd,validate_res){
 	validate_res = validate_res || {};
 	validate_res.incorrect_vals = false;
-		
+//debugger		
 	var pm = this.m_commands[cmd].getPublicMethod();
 	if (!pm){
 		throw Error(this.ER_NO_PM);
@@ -232,89 +279,129 @@ ViewAjx.prototype.validate = function(cmd,validate_res){
 	var bindings = this.m_commands[cmd].getBindings();
 	if (bindings && bindings.length){		
 		this.resetError();	
-						
 		for (var i=0;i<bindings.length;i++){			
 			var bind = bindings[i];
 			var ctrl = bind.getControl();
-			if (!ctrl){
+				
+			if(bind.getFunc && bind.getFunc()){
+				bind.getFunc().call(this,pm,ctrl);
+				
+			}else if (!ctrl){
 				throw Error(CommonHelper.format(this.ER_NO_CTRL,[cmd,i]));	
-			}
-			var f = bind.getField();			
-			if (!f && bind.getFieldId()){
-				//field id is defined
-				f = pm.getField(bind.getFieldId());
-			}
-			else if(!f && pm.fieldExists(ctrl.getName())){
-				//no field or field id, but there is a field with the same id as control
-				f = pm.getField(ctrl.getName());
-			}
-			else if (!f){
-				throw Error(CommonHelper.format(this.ER_CTRL_NOT_BOUND,[ctrl.getName()]));	
-			}
-			if (ctrl.getModified && ctrl.getModified()){			
-				//is it an object field?
-				if (ctrl.getIsRef && ctrl.getIsRef()
-				&& !(f.getDataType()==Field.prototype.DT_JSON || f.getDataType()==Field.prototype.DT_JSONB)
-				){			
-					//reference field with keys					
-					var keyIds = ctrl.getKeyIds();
-					if (keyIds.length>=1){
-						f.setValue(ctrl.getKeys()[keyIds[0]]);
-						modified = true;
-					}
+				
+			}else{			
+				var f = bind.getField();			
+				if (!f && bind.getFieldId()){
+					//field id is defined
+					f = pm.getField(bind.getFieldId());
 				}
-				else{
-					//simple field
-					var val = ctrl.getValue();
-					if (ctrl.setValid)ctrl.setValid();
-					
+				else if(!f && pm.fieldExists(ctrl.getName())){
+					//no field or field id, but there is a field with the same id as control
+					f = pm.getField(ctrl.getName());
+				}
+				else if (!f){
+					throw Error(CommonHelper.format(this.ER_CTRL_NOT_BOUND,[ctrl.getName()]));	
+				}
+				if (ctrl.getModified && ctrl.getModified()){							
 					try{
-						if (ctrl.getValidator && ctrl.getValidator())ctrl.getValidator().validate(val);
-						
-						if (ctrl.getRequired && ctrl.getRequired() && val===null){
-							throw new Error(f.getValidator().ER_EMPTY);
+						//is it an object field?
+						if (ctrl.getIsRef && ctrl.getIsRef()
+						&& !(f.getDataType()==Field.prototype.DT_JSON || f.getDataType()==Field.prototype.DT_JSONB)
+						){	
+							//reference field with keys					
+							var keyIds = ctrl.getKeyIds();
+							if (keyIds.length>=1){
+								var ctrl_keys = ctrl.getKeys();
+								var key_val = (ctrl_keys&&ctrl_keys!="{}")? ctrl_keys[keyIds[0]] : null;
+								key_val = (key_val=="null")? null:key_val;
+								
+								if (ctrl.getRequired && ctrl.getRequired() && key_val===null){
+									throw new Error(f.getValidator().ER_EMPTY);
+								}
+								var f_dt = f.getDataType();
+								if((f_dt == Field.prototype.DT_STRING || f_dt == Field.prototype.DT_TEXT) && typeof(key_val)=="number"){
+									//special case: method type is INT key and we have a text field
+									//just serialize ref to text
+									f.setValue(CommonHelper.serialize(ctrl.getValue()));
+								}else{
+									f.setValue(key_val);
+								}
+							}
 						}
-						f.setValue(val);
-						modified = true;						
+						else{
+							//simple field					
+							if (ctrl.setValid)ctrl.setValid();
+					
+							var val = ctrl.getValue();
+//if(f.m_id=="content"){
+//console.log(val)	
+//}				
+							if (ctrl.validate){
+								if (!ctrl.validate()){
+									validate_res.incorrect_vals = true;
+									continue;
+								}
+							}
+							else if (ctrl.getValidator && ctrl.getValidator()){
+								ctrl.getValidator().validate(val);
+							}
+					
+							if (ctrl.getRequired && ctrl.getRequired() && val===null){
+								throw new Error(f.getValidator().ER_EMPTY);
+							}
+							if (bind.getAssocIndex()){
+								f.setValue(bind.getAssocIndex(),val);
+							}
+							else{
+								f.setValue(val);
+							}
+						}
 					}
 					catch(e){
 						if (ctrl.setNotValid)ctrl.setNotValid(e.message);
 						validate_res.incorrect_vals = true;
-					}							
-				}
-			}
-			else if (ctrl.isNull && ctrl.isNull() && (ctrl.getRequired() || f.getValidator().getRequired()) && ctrl.setNotValid){
-				ctrl.setNotValid(f.getValidator().ER_EMPTY);
-				validate_res.incorrect_vals = true;				
-			}
-			else if (ctrl instanceof EditFile){
-				//??? always reset files ??? All reset to deffault values
-				f.resetValue();
-			}
-				
-			//setting old keys for update
-			if (validate_res.old_keys && !validate_res.incorrect_vals && f.getPrimaryKey() && pm.fieldExists(f.getOldId())){
-				//pm.setFieldValue(f.getOldId(),ctrl.getInitValue());
-				var init_val = ctrl.getInitValue();				
-				if (typeof init_val =="object"){
-					if  (init_val instanceof RefType){
-						init_val = init_val.getKey();
 					}
-					else{
-						for (var init_val_id in init_val){
-							init_val = init_val[init_val_id];
-							break;
-						}						
-					}					
 				}
-				validate_res.old_keys[f.getOldId()] = init_val;
-			}			
+				//Required controle+field
+				//Corrected 22/10/20 why was && ???
+				else if (ctrl.isNull && ctrl.isNull() && (ctrl.getRequired() || f.getValidator().getRequired()) && ctrl.setNotValid){
+					ctrl.setNotValid(f.getValidator().ER_EMPTY);
+					validate_res.incorrect_vals = true;				
+				}
+				else if (f.isSet()){
+					f.m_value = undefined;
+				}
+				/** Reset to default values
+				 * there is always a special method for deleting files
+				 * no need to send null value
+				else if (ctrl instanceof EditFile){
+					f.resetValue();
+				}
+				*/
+				//setting old keys for update
+				if (validate_res.old_keys && !validate_res.incorrect_vals && f.getPrimaryKey() && pm.fieldExists(f.getOldId())){
+					//pm.setFieldValue(f.getOldId(),ctrl.getInitValue());
+					var init_val = ctrl.getInitValue();				
+					if (typeof init_val =="object"){
+						if  (init_val instanceof RefType){
+							init_val = init_val.getKey();
+						}
+						else{
+							for (var init_val_id in init_val){
+								init_val = init_val[init_val_id];
+								break;
+							}						
+						}					
+					}
+					validate_res.old_keys[f.getOldId()] = init_val;
+				}			
+			}
 		}
 	}
 	return !validate_res.incorrect_vals;
 }
 
-ViewAjx.prototype.execCommand = function(cmd,sucFunc,failFunc){
+ViewAjx.prototype.execCommand = function(cmd,sucFunc,failFunc,allFunc){
 	if (!this.m_commands[cmd]){
 		throw Error(this.ER_CMD_NOT_FOUND);
 	}
@@ -322,19 +409,22 @@ ViewAjx.prototype.execCommand = function(cmd,sucFunc,failFunc){
 	if (!pm){
 		throw Error(this.ER_NO_PM);
 	}
-	
+// debugger	
 	var validate_res = {
 		"incorrect_vals" : false,
 		"modified" : this.getModified(cmd),
 		"old_keys" : {}
 	};
-	//var pm_modified = false;
+	//what if it is insert and we need just id (insert without any field)? NOT SOLVED!!!
 	if (!validate_res.modified){
 		var pm_fields = pm.getFields();
-		for (var fid in pm_fields){
-			if (pm_fields[fid].isSet()){
-				validate_res.modified = true;
-				break;
+		if(pm_fields["f"] && pm_fields["f"].m_value && pm_fields["f"].m_value == "insert"){
+			for (var fid in pm_fields){
+				if(fid=="c"||fid=="f"||fid=="v"||fid.substring(0,4)=="old_")continue;			
+				if (pm_fields[fid].isSet()){
+					validate_res.modified = true;
+					break;
+				}
 			}
 		}
 	}
@@ -344,7 +434,12 @@ ViewAjx.prototype.execCommand = function(cmd,sucFunc,failFunc){
 	}
 	
 	if (validate_res.incorrect_vals){
-		this.setError(this.ER_ERRORS);
+		if (failFunc){
+			failFunc.call(this,null,null,this.ER_ERRORS);
+		}
+		if (allFunc){
+			allFunc.call(this);
+		}
 	}
 	else if (validate_res.modified){
 		if (!this.m_commands[cmd].getAsync()){
@@ -359,6 +454,36 @@ ViewAjx.prototype.execCommand = function(cmd,sucFunc,failFunc){
 		var self = this;
 		try{			
 			this.beforeExecCommand(cmd,pm);
+			var pm_opts = {
+				"async":this.m_commands[cmd].getAsync(),
+				"fail":function(resp,errCode,errStr){
+					self.onRequestFail(failFunc,cmd,resp,errCode,errStr);
+				}
+			};
+			if (!this.m_commands[cmd].getAsync() && allFunc){
+				pm_opts.all = function(){
+					self.setTempEnabled(cmd);
+					allFunc.call(this);
+				}
+			}
+			else if (!this.m_commands[cmd].getAsync() && !allFunc){
+				pm_opts.all = function(){
+					self.setTempEnabled(cmd);
+				}
+			}
+			else if (this.m_commands[cmd].getAsync() && allFunc){
+				pm_opts.all = function(){
+					allFunc.call(this);
+				}
+			}
+			
+			if (sucFunc){
+				pm_opts.ok = function(resp){
+					sucFunc.call(this,resp);
+				}
+			}
+			pm.run(pm_opts);
+			/*
 			pm.run({
 				"async":this.m_commands[cmd].getAsync(),
 				"ok":function(resp){
@@ -373,9 +498,13 @@ ViewAjx.prototype.execCommand = function(cmd,sucFunc,failFunc){
 					self.onRequestFail(failFunc,cmd,resp,errCode,errStr);
 				}
 			});
+			*/
 		}
 		catch(e){
 			this.onRequestFail(failFunc,cmd,null,null,e.message);
+			if (allFunc){
+				allFunc.call(this);
+			}
 		}
 	}
 	else{
@@ -383,17 +512,30 @@ ViewAjx.prototype.execCommand = function(cmd,sucFunc,failFunc){
 		if (sucFunc){
 			sucFunc.call(this,null);
 		}
+		if (allFunc){
+			allFunc.call(this);
+		}
 	}
 	
 }
 
 ViewAjx.prototype.onRequestFail = function(failFunc,cmd,resp,errCode,errStr){
-	this.setTempEnabled(cmd);	
+	//this.setTempEnabled(cmd); fired from all!!!
 	if (failFunc){
 		failFunc.call(this,resp,errCode,errStr);
 	}
 	else{
-		this.setError(window.getApp().formatError(errCode,errStr));
+		/*
+		var conn = window.getApp().getServConnector();
+		if(!(conn  &&
+		((conn.ERR_SQL_SERVER && errCode==conn.ERR_SQL_SERVER)
+		||(conn.ERR_AUTH_NOT_LOGGED && errCode==conn.ERR_AUTH_NOT_LOGGED))
+		)){
+			this.setError(window.getApp().formatError(errCode,errStr));
+		}
+		*/
+		//debugger
+		this.setError(window.getApp().formatError(errCode,errStr));		
 	}	
 }
 
@@ -425,7 +567,6 @@ ViewAjx.prototype.toDOM = function(parent,cmd){
 	//backward compatibility
 	cmd = (cmd===true)? "copy":cmd;
 
-//console.log("ViewAjx.prototype.toDOM cmd="+cmd)
 	ViewAjx.superclass.toDOM.call(this,parent);
 	
 	this.onGetData(null,cmd);

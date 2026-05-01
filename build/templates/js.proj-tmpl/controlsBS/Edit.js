@@ -337,7 +337,7 @@ Edit.prototype.setComment = function(com){
 	//&&this.m_node&&this.m_node.parentNode
 	if (this.m_comment==undefined){
 		this.m_comment=new Control(this.getId()+"_comment_","div",{visible:true,"className":"form-control-static ctrl_comment"});
-		this.m_comment.toDOM(this.m_node.parentNode);
+		this.m_comment.toDOM(this.m_container? this.m_container.getNode():this.m_node.parentNode);
 	}
 	this.m_comment.setValue(com);
 	this.m_comment.setVisible(true);	

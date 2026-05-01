@@ -12,6 +12,7 @@ class Field {
 	private $readOnly=FALSE;
 	private $minLength=0;
 	private $sysCol=FALSE;
+	private $noValueOnCopy=FALSE;
 	
 	public function __construct($id,$dataType,$options=false) {
 		$this->setId($id);
@@ -44,6 +45,10 @@ class Field {
 			if (isset($options['sysCol'])){
 				$this->setSysCol($options['sysCol']);
 			}			
+			if (isset($options['noValueOnCopy'])){
+				$this->setNoValueOnCopy($options['noValueOnCopy']);
+			}			
+			
 		}
 	}
 	public function setId($id){
@@ -71,6 +76,13 @@ class Field {
 	}
 	public function setSysCol($sysCol){
 		return $this->sysCol = $sysCol;
+	}
+
+	public function getNoValueOnCopy(){
+		return $this->noValueOnCopy;
+	}
+	public function setNoValueOnCopy($v){
+		return $this->noValueOnCopy = $v;
 	}
 	
 	public function getLength(){
@@ -119,9 +131,6 @@ class Field {
 	public function setValue($new_val){
 		$this->value = $new_val;
 	}
-	public function __clone() {
-        unset($this->value);
-    }
 	
 	private function addAttr(&$str,$name,$val){
 		if (isset($val)){
@@ -130,9 +139,9 @@ class Field {
 	}
 	public function dataToXML(){
 		$id = $this->getId();
-		$val = $this->getValue();
-		return (is_null($val)?
-				sprintf('<%s xsi:nil="true">%s</%s>',$id,$val,$id) : sprintf('<%s>%s</%s>',$id,$val,$id)
+		$v = $this->getValue();
+		$val = (isset($v) && strlen($v))? htmlspecialchars($v, ENT_XML1, 'UTF-8', FALSE) : NULL;
+		return (is_null($val)? sprintf('<%s xsi:nil="true"/>', $id) : sprintf('<%s>%s</%s>',$id, $val, $id)
 		);
 	}
 	public function metadataToXML(){

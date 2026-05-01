@@ -14,16 +14,21 @@
  * @param {string|object} options.data - Can either be a string or a JSON node
  * @param {string} [options.tagModel=this.DEF_TAG_MODEL]
  * @param {string} [options.tagRow=this.DEF_TAG_ROW]
- * @param {string} [options.tagRows=this.DEF_TAG_ROWS]   
+ * @param {string} [options.tagRows=this.DEF_TAG_ROWS]
+ * @param {bool} [options.simpleStructure=false] simple structure if true - [{f1:"", f2:""}], otherwise full model structure
  */
 function ModelJSON(id,options){	
-	
+	if(id&&!options&&typeof(id)=="object"&&id.data&&id.data.id){
+		options = CommonHelper.clone(id);
+		id = id.data.id;
+	}
 	//this.setTagModel(options.tagModel || this.DEF_TAG_MODEL);
 	this.setTagRow(options.tagRow || this.DEF_TAG_ROW);
 	this.setTagRows(options.tagRows || this.DEF_TAG_ROWS);
 	
+	this.m_simpleStructure = (options.simpleStructure===true);
+	
 	options.markOnDelete = (options.markOnDelete!=undefined)? options.markOnDelete:false;
-	options.primaryKeyIndex = (options.primaryKeyIndex!=undefined)? options.primaryKeyIndex:true;
 	
 	ModelJSON.superclass.constructor.call(this,id,options);
 }
@@ -53,27 +58,28 @@ ModelJSON.prototype.m_tagRows;
  * Retrieves specific row
  */
 ModelJSON.prototype.fetchRow = function(row){
-	this.resetFields();
-	
-	for (fid in row.fields){
-		if (this.m_fields[fid]){
-			//field exists in MD
-			var t_val = null;
-			if (row.fields[fid]!=undefined){
-				t_val = row.fields[fid];
-			}
-			if (t_val=="" && this.m_fields[fid].getValidator() && this.m_fields[fid].getValidator().getRequired()){
-				/**
-				 * to prevent throwing error in case field is required but there is no
-				 * value in database
-				 */
-			}
-			else if (t_val!==null){
-			//console.log("ModelJSON.prototype.fetchRow Setting id="+fid+" t_val=")
-			//console.dir(t_val)
-				this.m_fields[fid].setValue(t_val);
-			}							
-		}	
+	this.resetFields();	
+	var fields = row.fields? row.fields:row; 
+	for (fid in fields){
+		if (!this.m_fields[fid]){
+			continue;
+		}
+		//field exists in MD
+		var t_val = null;
+		if (fields[fid]!=undefined){
+			t_val = fields[fid];
+		}
+		if (t_val=="" && this.m_fields[fid].getValidator() && this.m_fields[fid].getValidator().getRequired()){
+			/**
+			 * to prevent throwing error in case field is required but there is no
+			 * value in database
+			 */
+		}
+		else if (t_val!==null){
+		//console.log("ModelJSON.prototype.fetchRow Setting id="+fid+" t_val=")
+		//console.dir(t_val)
+			this.m_fields[fid].setValue(t_val);
+		}							
 	}
 	
 	return true;
@@ -83,12 +89,20 @@ ModelJSON.prototype.getRows = function(includeDeleted){
 	return this.m_model[this.getTagRows()];
 }
 
+/*
+ * same as getRows
+ */
+ModelJSON.prototype.getRowsJSON = function(includeDeleted){
+	return this.getRows[includeDeleted];
+}
+
 ModelJSON.prototype.copyRow = function(row){
 	this.m_model[this.getTagRows()].push(JSON.parse(JSON.stringify(row)));
 }
 
 ModelJSON.prototype.deleteRow = function(row,mark){
 	ModelJSON.superclass.deleteRow.call(this,row,mark);
+	
 	if (mark){
 		row[this.ATTR_DELETED] = "1";
 	}
@@ -97,7 +111,7 @@ ModelJSON.prototype.deleteRow = function(row,mark){
 		if (ind>=0){			
 			this.m_model[this.getTagRows()].splice(ind, 1);
 		}
-	}
+	}	
 }
 
 ModelJSON.prototype.undeleteRow = function(row){
@@ -118,20 +132,27 @@ ModelJSON.prototype.updateRow = function(row){
 }
 
 ModelJSON.prototype.makeRow = function(){
-	var row = {"fields":{}};	
+	//Corrected 20/03/21, 13/08/22
+	//var row = {"fields":{}}; old
+	var row = this.m_simpleStructure? {} : {"fields":{}};
 	for (var fid in this.m_fields){
-		row.fields[fid] = this.m_fields[fid].getValue();
+		//Corrected 20/03/21
+		if(row.fields){
+			row.fields[fid] = this.m_fields[fid].getValue();
+		}else{
+			row[fid] = this.m_fields[fid].getValue();
+		}
 	}
 	return row;
 }
 
 ModelJSON.prototype.setRowValues = function(row){
+	//Corrected 20/03/21
+	var fields = row.fields? row.fields:row;
 	for (var id in this.m_fields){
-	//console.log("ModelJSON.prototype.setRowValues id="+id)
-		if (this.m_fields[id].isSet()){
-			//console.log("   setting val=")
-			//console.dir(this.m_fields[id].getValue());
-			row.fields[id] = this.m_fields[id].getValue();
+		if (this.m_fields[id].isSet()){			
+			//row.field[id] = this.m_fields[id].getValue();
+			fields[id] = this.m_fields[id].getValue();
 		}
 	}	
 }
@@ -142,11 +163,14 @@ ModelJSON.prototype.initSequences = function(){
 		if (!this.m_model[this.getTagRows()]){
 			return;
 		}
+		//console.dir(this.m_model[this.getTagRows()])
 		for (var r=0;r<this.m_model[this.getTagRows()].length;r++){
 			var row = this.m_model[this.getTagRows()][r];
-			for (var c in row.fields){
+			//Corrected 20/03/21
+			var fields = row.fields? row.fields:row;
+			for (var c in fields){
 				if (c==sid){
-					var dv = parseInt(row.fields[c],10);
+					var dv = parseInt(fields[c],10);
 					if (this.m_sequences[sid]<dv){
 						this.m_sequences[sid] = dv;
 					}
@@ -155,8 +179,7 @@ ModelJSON.prototype.initSequences = function(){
 			}
 		}
 		//console.log("Sequence "+sid+"=")
-		//console.dir(this.m_sequences[sid])
-							
+		//console.dir(this.m_sequences[sid])							
 	}		
 }
 
@@ -166,6 +189,7 @@ ModelJSON.prototype.initSequences = function(){
  * rows:[{"fields":{"f1":"v1","f2":"v2"}}]
  */
 ModelJSON.prototype.setData = function(data){
+//console.log("ModelJSON:",data)
 /*
 	if (this.getLocked()){
 		throw Error(this.ER_LOCKED);
@@ -174,27 +198,42 @@ ModelJSON.prototype.setData = function(data){
 	var no_data = false;
 	
 	if (!data){
-		data = {"id":this.getId()};
+		data = {"id": this.getId()};
 		data[this.getTagRows()] = [];
 		no_data = true;
 	}
 	
 	if (typeof(data) == "string"){
-		this.m_model = CommonHelper.unserialize(data);
-	}
-	else{
+		var data_o = CommonHelper.unserialize(data);
+		var t_rows = this.getTagRows();
+		if(!data_o[t_rows]){
+			this.m_model = {"id": this.getId()};
+			this.m_model[t_rows] = data_o;
+		}else{
+			this.m_model = data_o;
+		}
+	
+	}else if(CommonHelper.isArray(data)){
+		//passed structure: [{f1:"", f2:""}, {f1:"", f2:""}] or [{"fields":{f1:"", f2:""}} , {"fields":{f1:"", f2:""}}]
+		this.m_model = {"id": this.getId()};
+		this.m_model[this.getTagRows()] = data;		
+		
+	}else{
 		this.m_model = data;
 	}
+	
 	if (!this.m_model.id){
 		this.m_model.id = this.getId();
 	}
 	
 	//lazy fields definition based on data
 	if (!this.m_fields && this.m_model.rows && this.m_model.rows.length){
-		if (this.m_model.rows[0].fields){
+		//Corrected 20/03/21
+		var fields = this.m_model.rows[0].fields? this.m_model.rows[0].fields : this.m_model.rows[0];
+		if (fields){
 			this.m_fields = {};
-			for (fid in this.m_model.rows[0].fields){
-				this.m_fields[fid] = new FieldString(fid,{"value":this.m_model.rows[0].fields[fid]});
+			for (fid in fields){
+				this.m_fields[fid] = new FieldString(fid,{"value":fields[fid]});
 			}
 		}
 	}
@@ -209,21 +248,19 @@ ModelJSON.prototype.setData = function(data){
 			return CommonHelper.serialize(self.m_model);
 		}
 	}
-	
 	if (!no_data){
 		this.initSequences();
-		this.reindex();
 	}
 			
-	ModelJSON.superclass.setData.call(this,data);
+	ModelJSON.superclass.setData.call(this, data);
 }
 
 /**
  * @public
- * @returns {Object}
+ * @returns {Object} based on m_simpleStructure
  */
 ModelJSON.prototype.getData = function(){
-	return this.m_model;
+	return this.m_simpleStructure? this.m_model.rows : this.m_model;
 }
 
 ModelJSON.prototype.getRowCount = function(includeDeleted){

@@ -1,0 +1,5 @@
+- Add enum for reg_type if not exists
+- Add to views RGProductList
+- Add tp server templates
+- Add view RGProductList_View.js and template
+- Add view RGProductList_View.rs_ru.js and template

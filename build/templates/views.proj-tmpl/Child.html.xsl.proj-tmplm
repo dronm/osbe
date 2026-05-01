@@ -13,7 +13,7 @@
 		<title>{{APP_NAME}}</title>
 		
 		<script>		
-			function beforeUnload(){
+			function beforeUnload(e){
 				if (window.m_childForms){
 					for(var fid in window.m_childForms){
 						if (window.m_childForms[fid]){
@@ -21,51 +21,109 @@
 						}
 					}
 				}
-				if (window.onClose){
+				
+				if (window.onClose){					
 					window.onClose();
 				}
+				/*
+				if (window.getApp){
+					var view = window.getApp().m_view;
+					if (view &amp;&amp; view.getModified &amp;&amp; view.getModified()){
+					
+						var mes = "Вы уверены что хотите закрыть окно и отказаться от записи?";
+						if(e)e.returnValue = mes;						
+						return mes;						
+					}
+				}
+				*/
+				return;
+				
 			}
-			function pageLoad(){				
+			<xsl:call-template name="modelFromTemplate"/>
+			function pageLoad(){
 				var application;
 				if (window.getApp){
 					application = window.getApp();
 					<xsl:call-template name="initAppWin"/>
-					<xsl:if test="/document/model[@id='ModelServResponse']/row/result='1'">
-					throw Error(CommonHelper.longString(function () {/*
-					<xsl:value-of select="/document/model[@id='ModelServResponse']/row/descr"/>
-					*/}));
-					</xsl:if>	
 					
 				}
 				else{
-				<xsl:call-template name="initApp"/>
+					<xsl:call-template name="initApp"/>
 				}
-				
-				<xsl:call-template name="modelFromTemplate"/>
-			<xsl:if test="/document/model[@id='ModelServResponse']/row/result='1'">
-				throw Error("<xsl:value-of select="/document/model[@id='ModelServResponse']/row/descr"/>");
-			</xsl:if>	
-				
+				window.isChild = true;
+				<xsl:call-template name="checkForError"/>
+				if (window.opener &amp;&amp; !window["getParam"] &amp;&amp; !window.opener["paramsSet"]){
+					//ie hack wait for params to appear
+					var param_check = setInterval(function(){
+						if (window["getParam"] || window.opener["paramsSet"]){
+							clearInterval(param_check);
+							showView();
+						}
+					},500);
+				}
+				else{
+					//ie hack
+					if (window.opener &amp;&amp; !window["getParam"] &amp;&amp; window.opener["getChildParam"]){
+						window["getParam"] = window.opener["getChildParam"];
+					}
+					showView();
+				}
 			}
 		</script>
 	</head>
 	
-	<body onload="pageLoad();" onbeforeunload="beforeUnload()">
+	<body onload="pageLoad();" onbeforeunload="return beforeUnload();">
 	
-	    <div class="container-fluid">
+		<!-- Page container -->
+		<div class="page-container">
 
-		<div class="row">
-		    <div id="windowData" class="col-lg-12">
-		    	<xsl:apply-templates select="model[@htmlTemplate='TRUE']"/>
-		    </div>
-		    <div class="windowMessage hidden">
-		    </div>		    
-		    <!-- /.col-lg-12 -->
+			<!-- Page content -->
+			<div class="page-content">
+
+				<!-- Main content -->
+				<div class="content-wrapper">
+
+					<!-- Content area -->
+					<div class="content">
+						<div class="row">
+							<div id="windowData" class="col-lg-12">
+								<xsl:apply-templates select="model[@htmlTemplate='TRUE']"/>
+							</div>
+
+							<div class="windowMessage hidden">
+							</div>
+							<!--waiting  -->
+							<div id="waiting">
+								<div>Обработка...</div>
+								<img src="img/loading.gif"/>
+							</div>
+							
+						</div>
+						
+						<!-- Footer -->
+						<div class="footer text-muted text-center">
+							2019. <a href="#">Катрэн+</a>
+						</div>
+						<!-- /footer -->
+
+					</div>
+					<!-- /content area -->
+
+				</div>
+				<!-- /main content -->
+
+			</div>
+			<!-- /page content -->
+
 		</div>
-		<!-- /.row -->
-	    </div>
-	    <!-- /.container-fluid -->	    
-	<xsl:call-template name="initJS"/>
+		<!-- /page container -->
+	    
+		<xsl:call-template name="initJS"/>
+		<!--
+		<script>
+			window.onload=pageLoad;
+		</script>
+		-->
 	</body>
 </html>		
 </xsl:template>

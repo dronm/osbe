@@ -23,8 +23,6 @@ class ViewHTML extends View{
 		$this->varModel->addField(new Field('version',DT_STRING));
 		$this->varModel->addField(new Field('locale_id',DT_STRING));
 		$this->varModel->addField(new Field('debug',DT_STRING));
-		$this->varModel->addField(new Field('token',DT_STRING));
-		$this->varModel->addField(new Field('tokenr',DT_STRING));
 	}
 	
 	public function getVarModel(){

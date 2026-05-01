@@ -44,12 +44,15 @@ ButtonCall.prototype.onClick = function(){
 		if (this.m_tel==""){
 			throw new Error(this.ER_NO_TEL);
 		}
-		var contr = new Caller_Controller(this.getApp());
+		var contr = new Caller_Controller();
 		var pm = contr.getPublicMethod("call");
 		pm.setFieldValue("tel",this.m_tel);
 		pm.setFieldValue("ext",this.m_telExt);
-		contr.run("call",{
-			"ok":this.m_onConnected
+		var self = this;
+		pm.run({
+			"ok":function(resp){
+				self.m_onConnected(resp);
+			}
 		});
 	}
 }

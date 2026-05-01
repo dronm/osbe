@@ -14,6 +14,7 @@
  * @param {object} options
  * @param {Validator} [options.validator=ValidatorString] 
  * @param {boolean} [options.cmdClear=true]
+ * @param {boolean} [options.cmdSmClear=false] 
  * @param {Button} [options.buttonClear=ButtonClear]
 
  */
@@ -21,9 +22,15 @@ function EditString(id,options){
 	options = options || {};
 	options.validator = options.validator || new ValidatorString(options);
 	
-	if (options.cmdClear==undefined || (options.cmdClear!=undefined && options.cmdClear)){
+	var w = window.getWidthType();
+	if (
+	(w=="sm" && options.cmdSmClear===true)
+	|| (w!="sm" && options.cmdClear!==false)
+	){
 		options.buttonClear = options.buttonClear || new ButtonClear(id+":btn_clear",{
-				"editControl":this
+				"editControl":this,
+				"enabled":options.enabled,
+				"onClear":options.onClear
 		});
 	}
 	EditString.superclass.constructor.call(this,id,options);
@@ -31,6 +38,8 @@ function EditString(id,options){
 extend(EditString,Edit);
 
 /* constants */
+EditString.prototype.ATTR_DISABLED = "readOnly";//
+
 
 /* public methods */
 EditString.prototype.setValue = function(val){

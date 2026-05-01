@@ -28,6 +28,24 @@
   </xsl:choose>
 </xsl:template>
 
+<xsl:template name="format_date">
+	<xsl:param name="val"/>
+	<xsl:param name="formatStr"/>
+	<xsl:choose>
+		<xsl:when test="string-length($val)=10">
+			<xsl:variable name="val_year" select="substring-before($val,'-')"/>
+			<xsl:variable name="part_month" select="substring-after($val,'-')"/>
+			<xsl:variable name="val_month" select="substring-before($part_month,'-')"/>
+			<xsl:variable name="part_date" select="substring-after($part_month,'-')"/>
+			<xsl:variable name="val_date" select="$part_date"/>
+			<xsl:value-of select="concat($val_date,'/',$val_month,'/',$val_year)" />
+		</xsl:when>
+		<xsl:otherwise>
+			<xsl:value-of select="$val" />
+		</xsl:otherwise>
+	</xsl:choose>
+</xsl:template>
+
 <!-- Main template-->
 <xsl:template match="/">
 	<xsl:apply-templates select="document/model"/>	
@@ -43,7 +61,7 @@
 <!-- table -->
 <xsl:template match="model">
 	<xsl:variable name="model_id" select="@id"/>	
-	<table id="{$model_id}" class="table-bordered table-striped">
+	<table id="{$model_id}" class="tabel table-bordered table-striped">
 		<thead>
 			<tr>
 				<xsl:for-each select="./row[1]/*">
@@ -67,7 +85,8 @@
 							</xsl:otherwise>
 						</xsl:choose>
 					</xsl:variable>
-					<th>&#160;&#160;&#160;&#160;&#160;<xsl:value-of select="$label"/>&#160;&#160;&#160;&#160;&#160;</th>
+					<!--<th>&#160;&#160;&#160;&#160;&#160;<xsl:value-of select="$label"/>&#160;&#160;&#160;&#160;&#160;</th>-->
+					<th><xsl:value-of select="$label"/></th>
 					</xsl:if>
 				</xsl:for-each>
 			</tr>
@@ -119,6 +138,15 @@
 		-->
 		<td align="{$td_align}" fieldId="{name()}"><xsl:value-of select="node()"/></td>
 	</xsl:when>
+	<xsl:when test="$dataType='10'">
+		<td align="{$td_align}" fieldId="{name()}">
+		      <xsl:call-template name="format_date">
+			<xsl:with-param name="val" select="node()" />
+			<xsl:with-param name="formatStr" select="''" />
+		      </xsl:call-template>		
+		</td>
+	</xsl:when>
+	
 	<!--ToDO
 		- Сделать итоги нормально в гуи
 		- передавать как то количество полей во всех группировках

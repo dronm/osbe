@@ -5,15 +5,17 @@ class ValidatorString extends Validator {
 	public function validate($val){
 		$l = strtolower($val);
 		if (!$val || !strlen($val) || $l=='undefined' || $l=='null'){
-			return 'null';
+			return 'NULL';
 		}	
 	
 		/*
 			check for SQL injection!!!
 		*/
 		$newVal = strval($val);
-		if(get_magic_quotes_gpc()) {
-			$newVal = stripslashes($newVal);
+		if(PHP_VERSION_ID<=70400) {
+			if(get_magic_quotes_gpc()){
+				$newVal = stripslashes($newVal);
+			}
 		}
 		
 		return $newVal;

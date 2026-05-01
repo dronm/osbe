@@ -14,7 +14,7 @@
 function FieldFloat(id,options){
 	options = options || {};
 	options.validator = options.validator || new ValidatorFloat(options);
-	options.dataType = this.DT_FLOAT;
+	options.dataType = options.dataType || this.DT_FLOAT;
 	
 	FieldFloat.superclass.constructor.call(this,id,options);
 }

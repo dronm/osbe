@@ -15,6 +15,18 @@ function GridColumnPhone(options){
 	options = options || {};	
 	
 	options.mask = options.mask || window.getApp().getPhoneEditMask();
+	options.ctrlClass = options.ctrlClass || EditPhone;
+	
+	if(window.Caller_Controller){
+		options.cellClass = options.cellClass || GridCellPhone;
+		options.cellOptions = options.cellOptions || {};
+		options.cellOptions.telExt = options.cellOptions.telExt||options.telExt;
+		options.cellOptions.onConnected = options.cellOptions.onConnected||options.onConnected;
+	}
+	else{
+		options.cellClass = options.cellClass || GridCell;
+	}
+		
 	GridColumnPhone.superclass.constructor.call(this,options);
 }
 extend(GridColumnPhone,GridColumn);

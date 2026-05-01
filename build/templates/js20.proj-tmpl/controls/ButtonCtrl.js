@@ -10,11 +10,13 @@
  * @requires controls/Button.js
 
  * @param {string} id Object identifier
- * @param {namespace} options
+ * @param {object} options
+ * @param {Edit} options.editControl
 */
 function ButtonCtrl(id,options){
 	options = options || {};
-	options.className = "btn btn-default";
+	// options.className = (options.className!=undefined)? options.className : "btn btn-default";
+	options.className = options.className || this.DEF_CLASS;
 	
 	this.setEditControl(options.editControl);
 	

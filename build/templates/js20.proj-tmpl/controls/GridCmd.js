@@ -2,11 +2,7 @@
  * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2016
  
  * @class
- * @classdesc object dialog view
- 
- * @extends
- 
- * @requires
+ * @classdesc
  
  * @param string id 
  * @param {namespace} options
@@ -25,7 +21,6 @@ function GridCmd(id,options){
 	
 	this.m_id = id;
 	this.m_grid = options.grid;
-	this.m_app = options.app;
 	
 	this.setShowCmdControl((options.showCmdControl!=undefined)? options.showCmdControl:true);
 	this.setShowCmdControlInPopup((options.showCmdControlInPopup!=undefined)? options.showCmdControlInPopup:true);
@@ -45,8 +40,7 @@ function GridCmd(id,options){
 				"onClick":function(e){
 					self.m_onCommand.call(self,e);
 				},
-				"attrs":{"title":options.title || this.TITLE},
-				"app":options.app
+				"attrs":{"title":options.title || this.TITLE}
 				}
 			)
 		];
@@ -56,7 +50,6 @@ function GridCmd(id,options){
 
 GridCmd.prototype.m_id;
 GridCmd.prototype.m_controls;
-GridCmd.prototype.m_app;
 GridCmd.prototype.m_grid;
 GridCmd.prototype.m_showCmdControl;
 GridCmd.prototype.m_showCmdControlInPopup;
@@ -110,22 +103,24 @@ GridCmd.prototype.getControl = function(ind){
 GridCmd.prototype.controlsToContainer = function(container){
 	this.m_container = container;
 	for (var i=0;i<this.m_controls.length;i++){
+		//name should be unique!!!		
+		//all commands!!!
+		var n = this.m_controls[i].getName();
+		//if(this.m_controls[i].getName&&container.getElement(n)){
+			//throw new Error("Already exists control with the same name '"+this.m_controls[i].getName()+"'");
+			//continue;
+		//}		
 		container.addElement(this.m_controls[i]);
 	}
 }
 
 GridCmd.prototype.controlsToPopUp = function(popUp){
 	for (var i=0;i<this.m_controls.length;i++){
+		if(!this.m_controls[i].getCaption){
+			continue;
+		}
 		popUp.addButton(this.m_controls[i]);
 	}
-}
-
-GridCmd.prototype.getApp = function(){
-	return this.m_app;
-}
-
-GridCmd.prototype.setApp = function(v){
-	this.m_app = v;
 }
 
 //abstract function MUST be overriden

@@ -72,6 +72,8 @@ ControllerObjClient.prototype.addInsert = function(){
 				*/
 				model.recInsert();
 				resp.setModelData("InsertedId_Model",model.getData());
+		//console.log("resp=")
+		//console.dir(resp)
 				options.ok(resp);
 			}						
 		}
@@ -88,8 +90,10 @@ ControllerObjClient.prototype.addUpdate = function(){
 		if (self.m_clientModel){
 			self.m_clientModel.reset();
 			var keyFields = {};
-			self.publicMethodFieldsToModel(this.getFields(),self.m_clientModel.getFields(),keyFields);			
-			self.m_clientModel.recUpdate(keyFields);
+			self.publicMethodFieldsToModel(this.getFields(),null,keyFields);			
+			self.m_clientModel.recLocate(keyFields);
+			self.publicMethodFieldsToModel(this.getFields(),self.m_clientModel.getFields());			
+			self.m_clientModel.recUpdate();
 			if (options.ok){
 				options.ok();
 			}			
@@ -159,12 +163,12 @@ ControllerObjClient.prototype.addGetObject = function(){
 	var self = this;
 	pm.run = function(options){
 		if (self.m_clientModel){
-			var rows = self.m_clientModel.recLocate(this.m_fields);
-			if (!rows){
+			//self.m_clientModel.recLocate(this.m_fields,true);
+			/*if (!rows){
 				throw Error(self.m_clientModel.ER_REС_NOT_FOUND);
-			}
+			}*/
 			if (options.ok){
-				options.ok(self.makeResponse(rows));
+				options.ok(self.makeResponse(self.m_clientModel.getFields()));
 			}			
 		}
 	}
@@ -184,12 +188,16 @@ ControllerObjClient.prototype.publicMethodFieldsToModel = function(sFields,tFiel
 		if (keyFields && id.substr(0,this.UPD_PARAM_PREF.length)==this.UPD_PARAM_PREF){
 			keyFields[id.substr(this.UPD_PARAM_PREF.length)] = sFields[id];
 		}
-		else if (tFields[id] && sFields[id].isSet()){ // && !sFields[id].isNull()
+		else if (tFields && tFields[id] && sFields[id].isSet()){ // && !sFields[id].isNull()
 			tFields[id].setValue(sFields[id].getValue());
 		}
 	}
-	//console.log("publicMethodFieldsToModel tFields=")
-	//console.dir(tFields)
+/*	
+	console.log("publicMethodFieldsToModel sFields=")
+	console.dir(sFields)
+	console.log("publicMethodFieldsToModel tFields=")
+	console.dir(tFields)
+*/	
 }
 
 ControllerObjClient.prototype.makeResponse = function(rows){

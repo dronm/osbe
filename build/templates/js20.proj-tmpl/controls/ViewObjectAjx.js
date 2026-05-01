@@ -27,16 +27,27 @@
  * @param {Control} options.commandContainer
  * @param {Model} options.model
  * @param {Array} options.commandElements
+ * @param {bool} [options.cmdOkAsync=true] 
+ * @param {int} [options.onSaveOkMesTimeout=DEF_ONSAVE_OK_MES_TIMEOUT]
  */
 function ViewObjectAjx(id,options){
 	options = options || {};	
+	this.setKeys(options.keys);
+	
+	if (options.model && options.model.getRowIndex()<0){
+		options.model.getNextRow();
+	}
+	
+	if(options.HEAD_TITLE && window.opener){
+		this.m_headTitle = options.HEAD_TITLE;
+	}
 	
 	ViewObjectAjx.superclass.constructor.call(this,id,options);
-	
+
 	this.addCommand(new Command(this.CMD_OK,{
-		"publicMethod":undefined,
+		"publicMethod":options.writePublicMethod,
 		"control":this.getControlOK(),
-		"async":true
+		"async":(options.cmdOkAsync!=undefined)? options.cmdOkAsync:true
 		})
 	);	
 	
@@ -54,6 +65,9 @@ function ViewObjectAjx(id,options){
 	
 	this.setController(options.controller);
 	this.setModel(options.model);
+	this.m_dataType = options.dataType;
+	
+	this.setOnSaveOkMesTimeout(options.onSaveOkMesTimeout || this.DEF_ONSAVEOK_MES_TIMEOUT);
 	
 	var self = this;
 		
@@ -61,7 +75,17 @@ function ViewObjectAjx(id,options){
 	if ( options.controlOk || options.cmdOk){
 		this.setControlOK(options.controlOk || new ButtonOK(id+":cmdOk",
 			{"onClick":function(){
-				self.onOK();
+				self.getControlOK().setEnabled(false);
+				self.m_oldSaveEn = false;
+				if(self.getControlSave()){
+					self.m_oldSaveEn = self.getControlSave().getEnabled();
+					if(self.m_oldSaveEn)self.getControlSave().setEnabled(false);
+				}
+				self.onOK(function(resp,errCode,errStr){
+					self.getControlOK().setEnabled(true);
+					if(self.m_oldSaveEn)self.getControlSave().setEnabled(true);
+					self.setError(window.getApp().formatError(errCode,errStr));
+				});
 			}
 		})
 		);
@@ -71,7 +95,19 @@ function ViewObjectAjx(id,options){
 	if ( options.controlSave || options.cmdSave ){
 		this.setControlSave(options.controlSave || new ButtonSave(id+":cmdSave",
 			{"onClick":function(){
-				self.onSave();
+				self.saveObject();
+				/*
+				self.getControlSave().setEnabled(false);
+				self.m_oldOkEn = false;
+				if(self.getControlOK()){
+					self.m_oldOkEn = self.getControlOK().getEnabled();
+					if(self.m_oldOkEn)self.getControlOK().setEnabled(false);
+				}
+				self.onSave(null,null,function(){
+					self.getControlSave().setEnabled(true);
+					if(self.m_oldOkEn)self.getControlOK().setEnabled(true);
+				});
+				*/
 			}
 		})
 		);
@@ -124,13 +160,12 @@ function ViewObjectAjx(id,options){
 			e.stopPropagation();
 			return false;
 		}
-	};
-		
+	};		
 }
 extend(ViewObjectAjx,ViewAjx);
 
 /* Constants */
-ViewObjectAjx.prototype.DEF_SAVE_CH_TIMEOUT = 30000;
+ViewObjectAjx.prototype.DEF_ONSAVEOK_MES_TIMEOUT = 2000;
 ViewObjectAjx.prototype.CMD_OK = "ok";
 
 /* private members */
@@ -146,9 +181,15 @@ ViewObjectAjx.prototype.m_replacedNode;
 ViewObjectAjx.prototype.m_cmd;
 ViewObjectAjx.prototype.m_controller;
 ViewObjectAjx.prototype.m_model;
+ViewObjectAjx.prototype.m_refType;
+ViewObjectAjx.prototype.m_dataType;
+
+ViewObjectAjx.prototype.m_keys;
 
 /**
- * {bool} updated, {object} newKeys
+ * {bool} updated,
+ * {object} newKeys
+ * {object} window window-owner reference
  */
 ViewObjectAjx.prototype.m_editResult;
 
@@ -204,17 +245,14 @@ ViewObjectAjx.prototype.addControls = function(){
 
 ViewObjectAjx.prototype.close = function(res){	
 	if(this.m_onClose){
+		res = res || {};
+		res.window = window;
 		this.m_onClose.call(this,res);
 	}
-	else if(window.onClose){
+	else{		
 		window.closeResult = res;
 		window.close();
 	}
-	/*
-	else{
-		window.close();
-	}
-	*/
 }
 
 /**
@@ -227,10 +265,12 @@ ViewObjectAjx.prototype.onAfterUpsert = function(resp,initControls){
 	 */
 	this.m_editResult.updated = true;
 	
-	if (resp && typeof(resp)=="object" && resp.modelExists("InsertedId_Model") && this.m_dataBindings && this.m_dataBindings.length){
+	var app = window.getApp();
+	
+	if (resp && typeof(resp)=="object" && resp.modelExists(app.INSERTED_KEY_MODEL_ID) && this.m_dataBindings && this.m_dataBindings.length){
 		this.m_editResult.newKeys = {};
 		var model_obj_class = this.getWritePublicMethod().getController().getObjModelClass();
-		var ret_model = new model_obj_class({"data":resp.getModelData("InsertedId_Model")});
+		var ret_model = new model_obj_class({"data":resp.getModelData(app.INSERTED_KEY_MODEL_ID)});
 		
 		var base_model_class;
 		if (ret_model instanceof ModelXML){
@@ -242,33 +282,41 @@ ViewObjectAjx.prototype.onAfterUpsert = function(resp,initControls){
 		else{
 			throw Error(this.ER_UNSUPPORTED_BASE_MODEL);
 		}	
-		//console.dir(resp.getModelData("InsertedId_Model"))		
-		var ret_model_serv = new base_model_class("InsertedId_Model",{"data":resp.getModelData("InsertedId_Model")});
+		var ret_model_serv_fields;
+		var ret_model_serv = new base_model_class(app.INSERTED_KEY_MODEL_ID, {"data":resp.getModelData(app.INSERTED_KEY_MODEL_ID)});
 		if (ret_model_serv.getNextRow()){
 			ret_model_serv_fields = ret_model_serv.getFields();
 		}
 		
-		ret_model.getNextRow();//first
-		var ret_fields = ret_model.getFields();
-		
-		for (ret_id in ret_model_serv_fields){
-			if (ret_model_serv_fields[ret_id].isSet() && ret_fields[ret_id]){
-				this.m_editResult.newKeys[ret_id] = ret_fields[ret_id].getValue();
-			}
-			
+		var ret_fields;
+		//first
+		if (ret_model.getNextRow()){
+			ret_fields = ret_model.getFields();
 		}
+		
+		if (ret_model_serv_fields && ret_fields) {
+			for (ret_id in ret_model_serv_fields){
+				if (ret_model_serv_fields[ret_id].isSet() && ret_fields[ret_id]){
+					this.m_editResult.newKeys[ret_id] = ret_fields[ret_id].getValue();
+				}
+			}
+		}
+		
 		if (initControls){
 			/* write bindings are not updated!!?? */
 			for (var i=0;i<this.m_dataBindings.length;i++){
 				this.defineField(i);
 				var f = this.m_dataBindings[i].getField();
 				if (f){		
-					//update controls whoose fields have come from server
+					//update controls which fields have come from server
 					var val;
 					if (ret_model_serv_fields[f.getId()] && ret_fields[f.getId()] && ret_fields[f.getId()].isSet()){
 						val = ret_fields[f.getId()].getValue();
 					}
 					else{
+						if(!this.m_dataBindings[i].getControl()){
+							console.dir(this.m_dataBindings[i])
+						}
 						val = this.m_dataBindings[i].getControl().getValue();
 					}
 			
@@ -302,12 +350,20 @@ ViewObjectAjx.prototype.onAfterUpsert = function(resp,initControls){
 							break;
 						}
 					}
-					//console.log("ViewObjectAjx.prototype.onAfterUpsert fieldId="+f.getId()+" Val="+val)
-					f.setValue(val);
+					//console.log("ViewObjectAjx.prototype.onAfterUpsert fieldId="+f.getId()+" Val=")
+					//console.dir(val)
+					try{
+						f.setValue(val);
+					}
+					catch(e){
+					}
 				}
 			}
 		}	
-	}	
+	}
+	
+	//lsn
+	this.m_editResult.lsn = app.getLsnValueFromResponse(resp);	
 }
 
 ViewObjectAjx.prototype.onOK = function(failFunc){
@@ -322,7 +378,7 @@ ViewObjectAjx.prototype.onOK = function(failFunc){
 	);
 }
 
-ViewObjectAjx.prototype.onSave = function(okFunc,failFunc){	
+ViewObjectAjx.prototype.onSave = function(okFunc,failFunc,allFunc){	
 	/*
 	var contr = this.getController();
 	var form_cmd = this.getCmd();	
@@ -330,7 +386,6 @@ ViewObjectAjx.prototype.onSave = function(okFunc,failFunc){
 		contr.getPublicMethod(contr.METH_INSERT).setFieldValue("ret_id",1);
 	}
 	*/
-	
 	var self = this;
 	this.execCommand(
 		this.CMD_OK,
@@ -340,7 +395,8 @@ ViewObjectAjx.prototype.onSave = function(okFunc,failFunc){
 				okFunc.call(self);
 			}
 		},
-		failFunc
+		failFunc,
+		allFunc
 	);
 }
 
@@ -391,15 +447,34 @@ ViewObjectAjx.prototype.setWriteTempDisabled = function(cmd){
 
 
 /* public methods */
+
+ViewObjectAjx.prototype.setDetailDataSetEnabled = function(en){
+	for(var det_id in this.m_detailDataSets){
+		var ctrl = this.m_detailDataSets[det_id].control;
+		if(ctrl && ctrl.setEnabled){
+			ctrl.setEnabled(en);
+		}
+	}
+}
+
 ViewObjectAjx.prototype.toDOM = function(parent){
-//console.log("ViewObjectAjx.prototype.toDOM getCmd="+this.getCmd())
 	ViewObjectAjx.superclass.toDOM.call(this,parent,this.getCmd());
 	
+	//disable all detail controls
+	if(this.getCmd() == "insert"){
+		this.setDetailDataSetEnabled(false);
+	}
+		
 	if (this.m_commandContainer)this.m_commandContainer.toDOM(parent);
 	
 	this.addKeyEvents();
 	
 	this.setDefRefVals();
+	
+	//set title
+	if(this.m_headTitle){
+		document.title = this.m_headTitle;
+	}
 }
 
 ViewObjectAjx.prototype.delDOM = function(){
@@ -477,7 +552,13 @@ ViewObjectAjx.prototype.getReplacedNode = function(){
 
 ViewObjectAjx.prototype.setCmd = function(v){
 	this.m_cmd = v;
+	
+	//enable all detail controls
+	if(v != "insert"){
+		this.setDetailDataSetEnabled(true);
+	}	
 }
+
 ViewObjectAjx.prototype.getCmd = function(){
 	if (!this.m_cmd && window.getParam){
 		this.m_cmd = window.getParam("cmd");
@@ -489,14 +570,14 @@ ViewObjectAjx.prototype.getCmd = function(){
 }
 
 ViewObjectAjx.prototype.setWritePublicMethodOnController = function(){	
+//console.log("ViewObjectAjx.prototype.setWritePublicMethodOnController")
 	if (this.m_controller){
 		var frm_cmd = this.getCmd();
 		if (frm_cmd){
-			this.setWritePublicMethod(
-				this.m_controller.getPublicMethod(
-					(frm_cmd=="insert"||frm_cmd=="copy")? this.m_controller.METH_INSERT:this.m_controller.METH_UPDATE
-				)
-			);
+			var pm_id = (frm_cmd=="insert"||frm_cmd=="copy")? this.m_controller.METH_INSERT:this.m_controller.METH_UPDATE;
+			if (this.m_controller.publicMethodExists(pm_id)){
+				this.setWritePublicMethod(this.m_controller.getPublicMethod(pm_id));
+			}
 		}
 	}
 }
@@ -511,21 +592,34 @@ ViewObjectAjx.prototype.getController = function(){
 	return this.m_controller;
 }
 
-ViewObjectAjx.prototype.onSaveOk = function(resp){
-	/** update controls from server response
-	*/
+/**
+ * update controls from server response
+ */
+ViewObjectAjx.prototype.updateControlsFromResponse = function(resp){
 	this.onAfterUpsert(resp,true);
 	
 	this.setCmd("update");			
 	this.setWritePublicMethod(null);
-	this.setDetailKey();
 	
-	window.showNote(this.NOTE_SAVED);
+	//set detail controls enabled
+	for (var id in this.m_detailDataSets){		
+		if(this.m_detailDataSets[id].control&&!this.m_detailDataSets[id].control.getEnabled()){
+			this.m_detailDataSets[id].control.setEnabled(true);
+		}
+	}
+	this.setDetailKey();
+}
+
+ViewObjectAjx.prototype.onSaveOk = function(resp){
+
+	this.updateControlsFromResponse(resp);
+	
+	window.showTempNote(this.NOTE_SAVED,null,this.m_onSaveOkMesTimeout);
 }
 
 
 /* Setting write public method insert||update */
-ViewObjectAjx.prototype.execCommand = function(cmd,sucFunc,failFunc){	
+ViewObjectAjx.prototype.execCommand = function(cmd,sucFunc,failFunc,allFunc){	
 	
 	if (cmd==this.CMD_OK && !this.getWritePublicMethod() && this.getController()){
 		this.setWritePublicMethodOnController();
@@ -541,7 +635,7 @@ ViewObjectAjx.prototype.execCommand = function(cmd,sucFunc,failFunc){
 		}	
 	}
 	*/		
-	ViewObjectAjx.superclass.execCommand.call(this,cmd,sucFunc,failFunc);
+	ViewObjectAjx.superclass.execCommand.call(this,cmd,sucFunc,failFunc,allFunc);
 }
 
 /*ReadPublicMethod
@@ -550,51 +644,144 @@ ViewObjectAjx.prototype.read = function(cmd,failFunc){
 	//console.log("ViewObjectAjx.prototype.read");
 	var self = this;
 	this.setReadTempDisabled();
-	this.getReadPublicMethod().run({
+	const pm = this.getReadPublicMethod();
+	pm.run({
+		"all":function(){
+			self.setTempEnabled();
+		},
 		"ok":function(resp){
 			self.onGetData(resp,cmd);
 		},
-		"fail":function(resp,erCode,erStr){
-			self.setTempEnabled();
+		"fail":function(resp,erCode,erStr){			
 			if (failFunc){
 				failFunc.call(self,resp,erCode,erStr);
+			}
+			else{
+				throw new Error(erStr);
 			}
 		}
 	});
 }
 
+/*
+ * Found out that this function is called twice, once from toDOM(), the other from grid->read()
+ * in case if grid edit with modalWindow View is used for editting.
+ * So it ussues two queries to server, one is with empty key if key depends on form model field.
+ * That is why decided to check primary keys before setting detail keys.
+ * If primary keys are not set then there is no need to set detail keys.
+ */
 ViewObjectAjx.prototype.setDetailKey = function(){
+	//check if form model fields are not set - return
+	if(this.m_model){
+		var f = this.m_model.getFields();
+		let keys_not_set = false;
+		for (var id in f){
+			if (f[id].getPrimaryKey() && f[id].getValue()===undefined){
+				keys_not_set = true;
+				break;
+			}
+		}	
+		if(keys_not_set){
+			return;
+		}
+	}
+	
 	for (var id in this.m_detailDataSets){		
-		var key = (this.m_detailDataSets[id].value)? this.m_detailDataSets[id].value:this.m_detailDataSets[id].field.getValue();
+		var ds = this.m_detailDataSets[id].control;			
 		
-		if (key){
-			var ds = this.m_detailDataSets[id].control;			
-			
-			//WRITE
-			var pm = ds.getInsertPublicMethod();
-			if (pm) pm.setFieldValue(this.m_detailDataSets[id].controlFieldId,key);
-			var pm = ds.getUpdatePublicMethod();
-			if (pm) pm.setFieldValue(this.m_detailDataSets[id].controlFieldId,key);
-
+		if(CommonHelper.isArray(this.m_detailDataSets[id].controlFieldId)
+		&& CommonHelper.isArray(this.m_detailDataSets[id].value)){
 			var pm = ds.getReadPublicMethod();
-			var contr = pm.getController();	
-			
-			ds.setFilter({
-				"field":this.m_detailDataSets[id].controlFieldId,
-				"sign":contr.PARAM_SGN_EQUAL,
-				"val":key
-			});
-			/*
-			//!!!READ!!! Write set in execCommand			
-			pm.setFieldValue(contr.PARAM_COND_FIELDS,this.m_detailDataSets[id].controlFieldId);
-			pm.setFieldValue(contr.PARAM_COND_SGNS,contr.PARAM_SGN_EQUAL);
-			pm.setFieldValue(contr.PARAM_COND_VALS,key);
-			*/
+			var contr = pm.getController();								
+		
+			for(var i = 0; i< this.m_detailDataSets[id].controlFieldId.length; i++){
+				//WRITE
+				var v;
+				if(typeof(this.m_detailDataSets[id].value[i]) == "function"){
+					v = this.m_detailDataSets[id].value[i].call(this);
+				}else{
+					v = this.m_detailDataSets[id].value[i];
+				}
+				var pm = ds.getInsertPublicMethod();
+				if (pm) pm.setFieldValue(this.m_detailDataSets[id].controlFieldId[i], v);
+				var pm = ds.getUpdatePublicMethod();
+				if (pm) pm.setFieldValue(this.m_detailDataSets[id].controlFieldId[i], v);
+				
+				ds.setFilter({
+					"field": this.m_detailDataSets[id].controlFieldId[i],
+					"sign":contr.PARAM_SGN_EQUAL,
+					"val": v
+				});
+			}
+			//get count from Pagination!
+			if(ds.getPagination){
+				var pg = ds.getPagination();
+				if(pg){
+					var pm = ds.getReadPublicMethod();	
+					pm.setFieldValue(pm.getController().PARAM_COUNT,pg.getCountPerPage());
+				}
+			}
 			
 			ds.onRefresh(function(){
 				ds.setEnabled(true);
 			});
-		}		
+						
+		}else{
+		
+			var key;
+			if(this.m_detailDataSets[id].field){
+				key = this.m_detailDataSets[id].field.getValue();
+			}
+			else if(this.m_detailDataSets[id].fieldId){
+				this.m_detailDataSets[id].field = this.m_model.getField(this.m_detailDataSets[id].fieldId);
+				key = this.m_detailDataSets[id].field.getValue();
+			}
+			else if(this.m_detailDataSets[id].value){
+				//function?
+				if(typeof(this.m_detailDataSets[id].value)=="function"){
+					key = this.m_detailDataSets[id].value.call(this);
+				}
+				else{
+					key = this.m_detailDataSets[id].value;
+				}
+			}
+			
+			if (key){
+				//WRITE
+				var pm = ds.getInsertPublicMethod();
+				if (pm) pm.setFieldValue(this.m_detailDataSets[id].controlFieldId,key);
+				var pm = ds.getUpdatePublicMethod();
+				if (pm) pm.setFieldValue(this.m_detailDataSets[id].controlFieldId,key);
+
+				var pm = ds.getReadPublicMethod();
+				var contr = pm.getController();	
+				
+				ds.setFilter({
+					"field":this.m_detailDataSets[id].controlFieldId,
+					"sign":contr.PARAM_SGN_EQUAL,
+					"val":key
+				});
+				/*
+				//!!!READ!!! Write set in execCommand			
+				pm.setFieldValue(contr.PARAM_COND_FIELDS,this.m_detailDataSets[id].controlFieldId);
+				pm.setFieldValue(contr.PARAM_COND_SGNS,contr.PARAM_SGN_EQUAL);
+				pm.setFieldValue(contr.PARAM_COND_VALS,key);
+				*/
+				
+				//get count from Pagination!
+				if(ds.getPagination){
+					var pg = ds.getPagination();
+					if(pg){
+						var pm = ds.getReadPublicMethod();	
+						pm.setFieldValue(pm.getController().PARAM_COUNT,pg.getCountPerPage());
+					}
+				}
+				
+				ds.onRefresh(function(){
+					ds.setEnabled(true);
+				});
+			}		
+		}
 	}
 }
 
@@ -610,8 +797,7 @@ ViewObjectAjx.prototype.onGetData = function(resp,cmd){
 	}	
 	this.setCmd(cmd);
 	*/
-	
-	if (!CommonHelper.isEmpty(this.m_detailDataSets)){
+	if (!CommonHelper.isEmpty(this.m_detailDataSets) && cmd!="insert" && cmd!="copy"){
 		this.setDetailKey();
 	}
 	
@@ -644,12 +830,13 @@ ViewObjectAjx.prototype.onGetData = function(resp,cmd){
 
 /**
  * @param object dsParams{
-	@param Control control,
-	@param string controlFieldId,
-	@param string value
-	@param Field field
-}
-*/
+ *	@param {Control} control,
+ *	@param {string|array} controlFieldId,
+ *	@param {string|function|array} value
+ *	@param {Field} field
+ *	@param {string} fieldId
+ *	}
+ */
 ViewObjectAjx.prototype.addDetailDataSet = function(dsParams){
 	this.m_detailDataSets[dsParams.control.getId()] = dsParams;
 	
@@ -657,16 +844,77 @@ ViewObjectAjx.prototype.addDetailDataSet = function(dsParams){
 	dsParams.control.initEditWinObjOrig = dsParams.control.initEditWinObj;
 	dsParams.control.initEditWinObj = function(cmd){
 		var ds_id = this.getId();
-		var key = (self.m_detailDataSets[ds_id].value)? 
-				self.m_detailDataSets[ds_id].value:self.m_detailDataSets[ds_id].field.getValue();						
+
 		var o = this.getEditViewOptions() || {};
-		o.keys = {};
-		o.keys[self.m_detailDataSets[ds_id].controlFieldId] = key;
-		this.setEditViewOptions(o);
-	
+		o.keys = {};		
+		if(CommonHelper.isArray(self.m_detailDataSets[ds_id].controlFieldId) && CommonHelper.isArray(self.m_detailDataSets[ds_id].value)){
+			//many keys
+			for(var i=0; i < self.m_detailDataSets[ds_id].controlFieldId.length; i++){
+				var v;
+				if(typeof(self.m_detailDataSets[ds_id].value[i]) == "function"){
+					v = self.m_detailDataSets[ds_id].value[i].call(this);
+				}else{
+					v = self.m_detailDataSets[ds_id].value[i];
+				}
+				o.keys[self.m_detailDataSets[ds_id].controlFieldId[i]] = v;
+			}
+			
+		}else{
+			//one kye
+			if(self.m_detailDataSets[ds_id].fieldId){
+				self.m_detailDataSets[ds_id].field = self.m_model.getField(self.m_detailDataSets[ds_id].fieldId);
+			}
+			var key;
+			if(self.m_detailDataSets[ds_id].field){
+				key = self.m_detailDataSets[ds_id].field.getValue();
+			}
+			else if(self.m_detailDataSets[ds_id].value){
+				if(typeof(self.m_detailDataSets[ds_id].value)=="function"){
+					key = self.m_detailDataSets[ds_id].value();
+				}
+				else{
+					key = self.m_detailDataSets[ds_id].value;
+				}			
+			}
+											
+			o.keys[self.m_detailDataSets[ds_id].controlFieldId] = key;
+		}
+		this.setEditViewOptions(o);	
 		this.initEditWinObjOrig(cmd);
 	}
-			
+	
+	//add filters
+	if(dsParams.control && dsParams.control.getInsertPublicMethod() && dsParams.value && !CommonHelper.isArray(dsParams.value)){
+		var key;
+		if(typeof(dsParams.value)=="function"){
+			key = dsParams.value();
+		}
+		else{
+			key = dsParams.value;
+		}
+		if(key){
+			dsParams.control.setFilter({
+				"field":dsParams.controlFieldId,
+				"sign":dsParams.control.getInsertPublicMethod().getController().PARAM_SGN_EQUAL,
+				"val":key
+			});
+		}
+		
+	}else if(dsParams.control && dsParams.control.getInsertPublicMethod() && dsParams.value && CommonHelper.isArray(dsParams.value)){
+		for(var i=0; i < dsParams.controlFieldId.length; i++){
+			var v;
+			if(typeof(dsParams.value[i]) == "function"){
+				v = dsParams.value[i].call(this);
+			}else{
+				v = dsParams.value[i];
+			}
+			dsParams.control.setFilter({
+				"field": dsParams.controlFieldId[i],
+				"sign": dsParams.control.getInsertPublicMethod().getController().PARAM_SGN_EQUAL,
+				"val": v
+			});
+		}	
+	}			
 }
 
 ViewObjectAjx.prototype.copyControl = function(fromName,toName){
@@ -735,12 +983,12 @@ ViewObjectAjx.prototype.addDataBinding = function(bind){
 }
 
 ViewObjectAjx.prototype.setWriteBindings = function(bindings,cmd){
-
+//debugger
 	if (this.m_model){
 		var bd_ids = [];
 		for (var b_ind=0;b_ind<bindings.length;b_ind++){
 			//bindings[b_ind] && 
-			//console.log("IND="+b_ind)
+			
 			var f_id;
 			if (!bindings[b_ind]){
 				throw new Error("ViewObjectAjx::setWriteBindings field index="+b_ind+". Field not defined!")
@@ -754,11 +1002,12 @@ ViewObjectAjx.prototype.setWriteBindings = function(bindings,cmd){
 			else if (bindings[b_ind].getControl()){
 				f_id = bindings[b_ind].getControl().getName();				
 			}
+			//console.log("IND="+b_ind+" f_id="+f_id)
 			if (f_id){
 				bd_ids.push(f_id);
 			}
 		}
-		
+
 		var fields = this.m_model.getFields();
 		//console.dir(bd_ids)
 		for (var f in fields){
@@ -775,7 +1024,7 @@ ViewObjectAjx.prototype.setWriteBindings = function(bindings,cmd){
 			}
 		}
 	}
-	this.getCommands()[ ( (cmd)? cmd:this.CMD_OK ) ].setBindings(bindings);	
+	this.getCommands()[ ( cmd? cmd:this.CMD_OK ) ].setBindings(bindings);	
 }
 
 ViewObjectAjx.prototype.getCommandContainer = function(){
@@ -783,5 +1032,47 @@ ViewObjectAjx.prototype.getCommandContainer = function(){
 }
 
 ViewObjectAjx.prototype.getRefType = function(){
-	//return new RefType("dataType":this.m_dataType,"")
+	if (!this.m_refType && this.m_model && this.m_dataType){
+		var keys = {};
+		var f = this.m_model.getFields();
+		for (var id in f){
+			if (f[id].getPrimaryKey() && this.elementExists(id)){
+				keys[id] = this.getElement(id).getValue();
+			}
+		}
+		this.m_refType = new RefType({"keys":keys,"descr":"", "dataType":this.m_dataType});
+	}
+	return this.m_refType;
+}
+
+ViewObjectAjx.prototype.saveObject = function(callBack){
+	this.m_oldSaveEn = false;
+	this.m_oldOkEn = false;
+	if (this.getControlSave()&&this.getControlSave().getEnabled){
+		this.m_oldSaveEn = this.getControlSave().getEnabled();
+		if(this.m_oldSaveEn)this.getControlSave().setEnabled(false);
+	}	
+	if(this.getControlOK()&&this.getControlOK().getEnabled){
+		this.m_oldOkEn = this.getControlOK().getEnabled();
+		if(this.m_oldOkEn)this.getControlOK().setEnabled(false);
+	}
+	var self = this;
+	this.onSave(null,null,function(){
+		if(self.m_oldSaveEn)self.getControlSave().setEnabled(true);
+		if(self.m_oldOkEn)self.getControlOK().setEnabled(true);
+		if (callBack)callBack();
+	});
+
+}
+ViewObjectAjx.prototype.setKeys = function(v){
+	this.m_keys = v;
+}
+ViewObjectAjx.prototype.getKeys = function(){
+	return this.m_keys;
+}
+ViewObjectAjx.prototype.setOnSaveOkMesTimeout = function(v){
+	this.m_onSaveOkMesTimeout = v;
+}
+ViewObjectAjx.prototype.getOnSaveOkMesTimeout = function(){
+	return this.m_onSaveOkMesTimeout;
 }

@@ -1,0 +1,33 @@
+-- Function: rg_{{REG_TABLE}}_balance(doc_types, integer {{#DIMENSIONS}},{{FIELD_SQL_DATA_TYPE}}[]{{/DIMENSIONS}})
+
+-- DROP FUNCTION rg_{{REG_TABLE}}_balance(doc_types, integer {{#DIMENSIONS}},{{FIELD_SQL_DATA_TYPE}}[]{{/DIMENSIONS}});
+
+CREATE OR REPLACE FUNCTION rg_{{REG_TABLE}}_balance(
+	IN in_doc_type doc_types
+	,IN in_doc_id integer
+	{{#DIMENSIONS}}
+	,in_{{FIELD_ID}}_ar {{FIELD_SQL_DATA_TYPE}}[]
+	{{/DIMENSIONS}}
+)
+RETURNS TABLE(
+	{{#DIMENSIONS}}
+	{{#NOT_FIRST}},{{/NOT_FIRST}}{{FIELD_ID}} {{FIELD_SQL_DATA_TYPE}}
+	{{/DIMENSIONS}}
+	{{#FACTS}}
+	,{{FIELD_ID}} {{FIELD_SQL_DATA_TYPE}}
+	{{/FACTS}}
+) AS
+$BODY$
+	SELECT * FROM rg_{{REG_TABLE}}_balance(
+		(SELECT doc_log.date_time FROM doc_log WHERE doc_log.doc_type=in_doc_type AND doc_log.doc_id=in_doc_id)
+		{{#DIMENSIONS}}
+		,in_{{FIELD_ID}}_ar
+		{{/DIMENSIONS}}
+	);
+$BODY$
+  LANGUAGE sql VOLATILE
+  COST 100
+  ROWS 1000;
+ALTER FUNCTION rg_{{REG_TABLE}}_balance(doc_types, integer {{#DIMENSIONS}},{{FIELD_SQL_DATA_TYPE}}[]{{/DIMENSIONS}})
+  OWNER TO ;
+

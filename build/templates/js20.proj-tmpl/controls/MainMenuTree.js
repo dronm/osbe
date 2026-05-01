@@ -1,8 +1,9 @@
 /**	
  * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2017
 
- * @extends
- * @requires core/extend.js  
+ * @extends TreeAjx
+ * @requires core/extend.js
+ * @requires TreeAjx.js     
 
  * @class
  * @classdesc Main menu tree class, Relies on a specific MainMenuContent_Model
@@ -27,6 +28,9 @@ function MainMenuTree(id,options){
 	options.model = new MainMenuContent_Model();
 	options.className = "menuConstructor";
 	options.controller = new MainMenuContent_Controller({"clientModel":options.model});
+	
+	options.popUpMenu = (options.popUpMenu!=undefined)? options.popUpMenu:new PopUpMenu();
+	options.navigateMouse = false;	
 	
 	options.commands = new GridCmdContainerAjx(id+":cmd",{
 		"cmdColManager":false,
@@ -62,14 +66,18 @@ function MainMenuTree(id,options){
 								"model":options.model,
 								"cellOptions":{"tagName":"SPAN"},
 								"ctrlClass":ViewEditRef,
-								"ctrlBindField":options.model.getField("viewid"),
+								//"ctrlBindField":options.model.getField("viewid"),
+								"ctrlBindFieldId": "viewid",
 								"ctrlOptions":{
 									"labelCaption":this.LB_CAP_VIEW,
 									"contTagName":"DIV",
 									"labelClassName":"control-label "+window.getBsCol(2),
 									"editContClassName":"input-group "+window.getBsCol(10),
 									"keyIds":["viewid"],
-									"menuTree":this
+									"menuTree":this,
+									"onSelect":function(fields){
+										self.onViewSelected(fields);
+									}
 								}								
 							}),
 							new GridColumn({
@@ -196,3 +204,13 @@ MainMenuTree.prototype.closeSelect = function(){
 	}		
 }
 
+MainMenuTree.prototype.onViewSelected = function(fields){
+//console.log("MainMenuTree.prototype.onViewSelected")
+//console.dir(fields)
+	var descr = fields.user_descr.getValue();
+	var sec = fields.section.getValue();
+	if(descr.substring(0,sec.length)==sec){
+		descr = descr.substring(sec.length);
+	}
+	this.getEditViewObj().getElement("descr").setValue(descr);
+}

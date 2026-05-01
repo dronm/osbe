@@ -17,7 +17,7 @@ function PublicMethod(id){
 }
 
 /* constants */
-PublicMethod.prototype.ER_PARAM_NOT_FOUND = "Параметр '%s' метода '%s' не найден.";
+PublicMethod.prototype.ER_PARAM_NOT_FOUND = "Поле '%' метода '%' не найден.";
 
 /* private members */
 PublicMethod.prototype.m_id;
@@ -50,8 +50,8 @@ PublicMethod.prototype.setParam = function(param){
 PublicMethod.prototype.checkParam = function(paramName){
 	if (!this.paramExists(paramName)){
 		throw new Error(
-			format(this.ER_PARAM_NOT_FOUND,
-				Array(paramName,this.getId())
+			CommonHelper.format(this.ER_PARAM_NOT_FOUND,
+				Array(paramName, this.getId())
 			));
 		
 	}

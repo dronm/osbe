@@ -32,7 +32,7 @@
 <xsl:variable name="DT_GEOM_POLYGON" select="'GeomPolygon'"/>
 <xsl:variable name="DT_GEOM_POINT" select="'GeomPoint'"/>
 <xsl:variable name="DT_TSVECTOR" select="'TSVector'"/>
-<xsl:variable name="DT_BYTEA" select="'bytea'"/>
+<xsl:variable name="DT_BYTEA" select="'Bytea'"/>
 
 <xsl:variable name="CMD_DROP" select="'drop'"/>
 <xsl:variable name="CMD_CREATE" select="'add'"/>
@@ -57,7 +57,8 @@
 	<xsl:apply-templates select="models/model[@virtual='TRUE']"/>
 	<xsl:apply-templates select="models/model[@cmd=$CMD_CREATE or @cmd=$CMD_ALTER]/registerAtcs"/>
 	<xsl:apply-templates select="constants"/>
-	<xsl:apply-templates select="views"/>	
+	<xsl:apply-templates select="views"/>
+	<xsl:apply-templates select="models/model/predefinedItems/predefinedItem[@cmd=$CMD_CREATE or @cmd=$CMD_ALTER]"/>		
 	
 	<!-- REFERENCE TYPES -->
 	<xsl:for-each select="models/model[@cmd=$CMD_CREATE or @cmd=$CMD_ALTER]/field[@refTable]">
@@ -85,45 +86,58 @@ $$
 	);
 $$
   LANGUAGE sql VOLATILE COST 100;
-ALTER FUNCTION <xsl:value-of select="@refTable"/>_ref(<xsl:value-of select="@refTable"/>) OWNER TO ;	
+ALTER FUNCTION <xsl:value-of select="@refTable"/>_ref(<xsl:value-of select="@refTable"/>) OWNER TO <xsl:value-of select="/metadata/@owner"/>;	
 	</xsl:if>
 	</xsl:for-each>    	
+	
 </xsl:template>
 
 <xsl:template match="model[@virtual='FALSE']">
+	<xsl:variable name="db_schema">
+		<xsl:choose>
+			<xsl:when test="@dataSchema"><xsl:value-of select="@dataSchema"/></xsl:when>
+			<xsl:when test="/metadata/@dataSchema"><xsl:value-of select="/metadata/@dataSchema"/></xsl:when>
+			<xsl:otherwise>public</xsl:otherwise>
+		</xsl:choose>
+	</xsl:variable>
+	<xsl:variable name="db_table" select="concat($db_schema,'.',@dataTable)"/>
+
 	<xsl:choose>
 	<xsl:when test="@cmd=$CMD_DROP">
-		DROP TABLE <xsl:value-of select="@dataTable"/>;
+		DROP TABLE <xsl:value-of select="$db_table"/>;
 	</xsl:when>
 	<xsl:when test="@cmd=$CMD_RENAME">
-		ALTER TABLE <xsl:value-of select="@dataTable"/> RENAME TO <xsl:value-of select="@newDataTable"/>;
+		ALTER TABLE <xsl:value-of select="$db_table"/> RENAME TO <xsl:value-of select="@newDataTable"/>;
 	</xsl:when>	
 	<xsl:when test="@cmd=$CMD_ALTER">
 		<xsl:if test="field/@cmd">	
-		ALTER TABLE <xsl:value-of select="@dataTable"/><xsl:text> </xsl:text><xsl:apply-templates select="field"/>;
+		ALTER TABLE <xsl:value-of select="$db_table"/><xsl:text> </xsl:text><xsl:apply-templates select="field"/>;
 		</xsl:if>
 		<xsl:apply-templates select="index"/>
 	</xsl:when>	
 	<xsl:when test="@cmd=$CMD_CREATE">
-		CREATE TABLE <xsl:value-of select="@dataTable"/>
-		(<xsl:apply-templates select="field"/>
-		<xsl:if test="field[@primaryKey='TRUE']">,CONSTRAINT <xsl:value-of select="@dataTable"/>_pkey PRIMARY KEY (<xsl:apply-templates select="field[@primaryKey='TRUE']" mode="primaryKey"/>)</xsl:if>
-		<xsl:apply-templates select="constraint"/>
-		);
-		<xsl:apply-templates select="index"/>
-		<xsl:apply-templates select="description"/>
-		ALTER TABLE <xsl:value-of select="@dataTable"/> OWNER TO <xsl:value-of select="/metadata/@owner"/>;
+	
+	-- ********** Adding new table from model **********
+	CREATE TABLE <xsl:value-of select="$db_table"/>
+	(<xsl:apply-templates select="field"/>
+	<xsl:if test="field[@primaryKey='TRUE']">,CONSTRAINT <xsl:value-of select="@dataTable"/>_pkey PRIMARY KEY (<xsl:apply-templates select="field[@primaryKey='TRUE']" mode="primaryKey"/>)</xsl:if>
+	<xsl:apply-templates select="constraint"/>
+	);
+	<xsl:apply-templates select="index"/>
+	<xsl:apply-templates select="description"/>
+	ALTER TABLE <xsl:value-of select="$db_table"/> OWNER TO <xsl:value-of select="/metadata/@owner"/>;
+	
 	</xsl:when>
 	</xsl:choose>
+	<xsl:variable name="doc_proc" select="concat($db_table,'_process()')"/>
 	<xsl:choose>
 		<xsl:when test="@modelType='DOC' and (@cmd=$CMD_DROP or @cmd=$CMD_RENAME)">
 			DROP FUNCTION <xsl:value-of select="$doc_proc"/>;
-			DROP TRIGGER IF EXISTS <xsl:value-of select="@dataTable"/>_before ON TABLE <xsl:value-of select="@dataTable"/>;
-			DROP TRIGGER IF EXISTS <xsl:value-of select="@dataTable"/>_after ON TABLE <xsl:value-of select="@dataTable"/>;
+			DROP TRIGGER IF EXISTS <xsl:value-of select="$db_table"/>_before ON TABLE <xsl:value-of select="$db_table"/>;
+			DROP TRIGGER IF EXISTS <xsl:value-of select="$db_table"/>_after ON TABLE <xsl:value-of select="$db_table"/>;
 		</xsl:when>
 		<xsl:when test="@modelType='DOC' and (@cmd=$CMD_CREATE or @cmd=$CMD_ALTER or @cmd=$CMD_RENAME)">
-			<xsl:variable name="model_id" select="@id"/>
-			<xsl:variable name="doc_proc" select="concat(@dataTable,'_process()')"/>
+			<xsl:variable name="model_id" select="@id"/>			
 			<xsl:variable name="doc_type_id" select="@docTypeId"/>
 			--process function
 			CREATE OR REPLACE FUNCTION <xsl:value-of select="$doc_proc"/>
@@ -131,7 +145,7 @@ ALTER FUNCTION <xsl:value-of select="@refTable"/>_ref(<xsl:value-of select="@ref
 			$BODY$
 			BEGIN
 				IF (TG_WHEN='BEFORE' AND TG_OP='INSERT') THEN
-					SELECT coalesce(MAX(d.number),0)+1 INTO NEW.number FROM <xsl:value-of select="@dataTable"/> AS d
+					SELECT coalesce(MAX(d.number),0)+1 INTO NEW.number FROM <xsl:value-of select="$db_table"/> AS d
 					<xsl:choose>
 					<xsl:when test="/metadata/globalFilters/field">
 					WHERE
@@ -160,7 +174,7 @@ ALTER FUNCTION <xsl:value-of select="@refTable"/>_ref(<xsl:value-of select="@ref
 				ELSIF (TG_WHEN='BEFORE' AND TG_OP='DELETE') THEN
 					--detail tables
 					<xsl:for-each select="/metadata/models/model[@masterModel=$model_id and @modelType='DOCTF']">
-					DELETE FROM <xsl:value-of select="@dataTable"/> WHERE doc_id=OLD.id;
+					DELETE FROM <xsl:value-of select="$db_table"/> WHERE doc_id=OLD.id;
 					</xsl:for-each>				
 					
 					--log
@@ -177,24 +191,24 @@ ALTER FUNCTION <xsl:value-of select="@refTable"/>_ref(<xsl:value-of select="@ref
 			ALTER FUNCTION <xsl:value-of select="$doc_proc"/> OWNER TO <xsl:value-of select="/metadata/@owner"/>;
 			</xsl:if>
 			-- before trigger
-			CREATE TRIGGER <xsl:value-of select="@dataTable"/>_before
-				BEFORE INSERT OR UPDATE OR DELETE ON <xsl:value-of select="@dataTable"/>
+			CREATE TRIGGER <xsl:value-of select="$db_table"/>_before
+				BEFORE INSERT OR UPDATE OR DELETE ON <xsl:value-of select="$db_table"/>
 				FOR EACH ROW EXECUTE PROCEDURE <xsl:value-of select="$doc_proc"/>;
 			-- after trigger
-			CREATE TRIGGER <xsl:value-of select="@dataTable"/>_after
-				AFTER INSERT OR UPDATE OR DELETE ON <xsl:value-of select="@dataTable"/>
+			CREATE TRIGGER <xsl:value-of select="$db_table"/>_after
+				AFTER INSERT OR UPDATE OR DELETE ON <xsl:value-of select="$db_table"/>
 				FOR EACH ROW EXECUTE PROCEDURE <xsl:value-of select="$doc_proc"/>;
 			
 			--before doc open function
-			<xsl:variable name="before_open_func" select="concat(@dataTable,'_before_open(in_view_id varchar(32),in_login_id integer, in_doc_id integer)')"/>
-			<xsl:variable name="before_write_func" select="concat(@dataTable,'_before_write(in_view_id varchar(32), in_doc_id integer)')"/>
+			<xsl:variable name="before_open_func" select="concat($db_table,'_before_open(in_view_id varchar(32),in_login_id integer, in_doc_id integer)')"/>
+			<xsl:variable name="before_write_func" select="concat($db_table,'_before_write(in_view_id varchar(32), in_doc_id integer)')"/>
 			<xsl:variable name="table_fact" select="/metadata/models/model[@modelType='DOCTF' and @masterModel=$model_id]/@dataTable"/>
 			CREATE OR REPLACE FUNCTION <xsl:value-of select="$before_open_func"/>
 			  RETURNS void AS
 			$BODY$
 				<xsl:for-each select="/metadata/models/model[@masterModel=$model_id and @modelType='DOCT']">
-				DELETE FROM <xsl:value-of select="@dataTable"/> WHERE view_id=in_view_id;
-				INSERT INTO <xsl:value-of select="@dataTable"/>
+				DELETE FROM <xsl:value-of select="$db_table"/> WHERE view_id=in_view_id;
+				INSERT INTO <xsl:value-of select="$db_table"/>
 				(view_id,login_id<xsl:for-each select="field">
 				<xsl:choose>
 				<xsl:when test="@id='tmp_doc_id' or @id='line_number'"></xsl:when>
@@ -294,6 +308,7 @@ ALTER FUNCTION <xsl:value-of select="@refTable"/>_ref(<xsl:value-of select="@ref
 		</xsl:when>
 		<xsl:when test="@modelType='RA' and (@cmd=$CMD_CREATE or @cmd=$CMD_ALTER or @cmd=$CMD_RENAME)">	
 			<xsl:variable name="ra_proc" select="concat(@dataTable,'_process()')"/>
+			<xsl:variable name="reg_type_id" select="@regTypeId"/>
 			<xsl:variable name="rg_table">
 				<xsl:call-template name="replace-string">
 				  <xsl:with-param name="text" select="@dataTable"/>
@@ -328,11 +343,11 @@ ALTER FUNCTION <xsl:value-of select="@refTable"/>_ref(<xsl:value-of select="@ref
 					RETURN NEW;
 				ELSIF (TG_WHEN='AFTER' AND (TG_OP='UPDATE' OR TG_OP='INSERT')) THEN
 
-					CALC_DATE_TIME = rg_calc_period('<xsl:value-of select="@regTypeid"/>'::reg_types);
+					CALC_DATE_TIME = rg_calc_period('<xsl:value-of select="$reg_type_id"/>'::reg_types);
 		
-					IF (CALC_DATE_TIME IS NULL) OR (NEW.date_time::date > rg_period_balance('<xsl:value-of select="@regTypeid"/>'::reg_types, CALC_DATE_TIME)) THEN
-						CALC_DATE_TIME = rg_period('material'::reg_types,NEW.date_time);
-						PERFORM rg_<xsl:value-of select="@regTypeid"/>_set_period(CALC_DATE_TIME);						
+					IF (CALC_DATE_TIME IS NULL) OR (NEW.date_time::date > rg_period_balance('<xsl:value-of select="$reg_type_id"/>'::reg_types, CALC_DATE_TIME)) THEN
+						CALC_DATE_TIME = rg_period('<xsl:value-of select="$reg_type_id"/>'::reg_types,NEW.date_time);
+						PERFORM rg_<xsl:value-of select="$reg_type_id"/>_set_custom_period(CALC_DATE_TIME);						
 					END IF;
 					
 					IF TG_OP='UPDATE' THEN
@@ -355,7 +370,7 @@ ALTER FUNCTION <xsl:value-of select="@refTable"/>_ref(<xsl:value-of select="@ref
 					END IF;
 					</xsl:if>
 					v_loop_rg_period = CALC_DATE_TIME;
-					v_calc_interval = rg_calc_interval('<xsl:value-of select="@regTypeId"/>'::reg_types);
+					v_calc_interval = rg_calc_interval('<xsl:value-of select="$reg_type_id"/>'::reg_types);
 					LOOP
 						UPDATE <xsl:value-of select="$rg_table"/>
 						SET
@@ -447,11 +462,11 @@ ALTER FUNCTION <xsl:value-of select="@refTable"/>_ref(<xsl:value-of select="@ref
 					RETURN OLD;
 				ELSIF (TG_WHEN='AFTER' AND TG_OP='DELETE') THEN
 					
-					CALC_DATE_TIME = rg_calc_period('<xsl:value-of select="@regTypeid"/>'::reg_types);
+					CALC_DATE_TIME = rg_calc_period('<xsl:value-of select="$reg_type_id"/>'::reg_types);
 		
-					IF (CALC_DATE_TIME IS NULL) OR (OLD.date_time::date > rg_period_balance('<xsl:value-of select="@regTypeid"/>'::reg_types, CALC_DATE_TIME)) THEN
-						CALC_DATE_TIME = rg_period('<xsl:value-of select="@regTypeid"/>'::reg_types,OLD.date_time);
-						PERFORM rg_materials_set_period(CALC_DATE_TIME);						
+					IF (CALC_DATE_TIME IS NULL) OR (OLD.date_time::date > rg_period_balance('<xsl:value-of select="$reg_type_id"/>'::reg_types, CALC_DATE_TIME)) THEN
+						CALC_DATE_TIME = rg_period('<xsl:value-of select="$reg_type_id"/>'::reg_types,OLD.date_time);
+						PERFORM rg_<xsl:value-of select="$reg_type_id"/>_set_custom_period(CALC_DATE_TIME);						
 					END IF;
 					
 					<xsl:choose>
@@ -471,93 +486,15 @@ ALTER FUNCTION <xsl:value-of select="@refTable"/>_ref(<xsl:value-of select="@ref
 					</xsl:for-each>										
 					</xsl:otherwise>
 					</xsl:choose>
-					v_loop_rg_period = CALC_DATE_TIME;
-					v_calc_interval = rg_calc_interval('<xsl:value-of select="@regTypeId"/>'::reg_types);
-					LOOP
-						UPDATE <xsl:value-of select="$rg_table"/>
-						SET
-						<xsl:for-each select="field[@regFieldType='fact']">
-						<xsl:if test="position() &gt; 1">,</xsl:if>
-						<xsl:value-of select="concat(@id,' = ',@id,' + ','v_delta_',@id)"/>
-						</xsl:for-each>
-						WHERE 
-							date_time=v_loop_rg_period
-							<xsl:for-each select="field[@regFieldType='dimension']">
-							AND <xsl:value-of select="concat(@id,' = OLD.',@id)"/>
-							</xsl:for-each>;
-						IF NOT FOUND THEN
-							BEGIN
-								INSERT INTO <xsl:value-of select="$rg_table"/> (date_time
-								<xsl:for-each select="field[@regFieldType='dimension' or @regFieldType='fact']">
-								,<xsl:value-of select="@id"/>
-								</xsl:for-each>)				
-								VALUES (v_loop_rg_period
-								<xsl:for-each select="field[@regFieldType='dimension']">
-								,OLD.<xsl:value-of select="@id"/>
-								</xsl:for-each>
-								<xsl:for-each select="field[@regFieldType='fact']">
-								,v_delta_<xsl:value-of select="@id"/>
-								</xsl:for-each>);
-							EXCEPTION WHEN OTHERS THEN
-								UPDATE <xsl:value-of select="$rg_table"/>
-								SET
-								<xsl:for-each select="field[@regFieldType='fact']">
-								<xsl:if test="position() &gt; 1">,</xsl:if>
-								<xsl:value-of select="concat(@id,' = ',@id,' + ','v_delta_',@id)"/>
-								</xsl:for-each>
-								WHERE date_time = v_loop_rg_period
-								<xsl:for-each select="field[@regFieldType='dimension']">
-								AND <xsl:value-of select="concat(@id,' = OLD.',@id)"/>
-								</xsl:for-each>;
-							END;
-						END IF;
-
-						v_loop_rg_period = v_loop_rg_period + v_calc_interval;
-						IF v_loop_rg_period > CALC_DATE_TIME THEN
-							EXIT;  -- exit loop
-						END IF;
-					END LOOP;
-
-					--Current balance
-					CURRENT_BALANCE_DATE_TIME = reg_current_balance_time();
-					UPDATE <xsl:value-of select="$rg_table"/>
-					SET
+					
+					PERFORM rg__update_periods(OLD.date_time
+					<xsl:for-each select="field[@regFieldType='dimension' or @regFieldType='fact']">
+					,<xsl:value-of select="@id"/>
+					</xsl:for-each>)									
 					<xsl:for-each select="field[@regFieldType='fact']">
-					<xsl:if test="position() &gt; 1">,</xsl:if>
-					<xsl:value-of select="concat(@id,' = ',@id,' + ','v_delta_',@id)"/>
+					,<xsl:value-of select="concat(@id,' = ',@id,' + ','v_delta_',@id)"/>
 					</xsl:for-each>
-					WHERE 
-						date_time=CURRENT_BALANCE_DATE_TIME
-						<xsl:for-each select="field[@regFieldType='dimension']">
-						AND <xsl:value-of select="concat(@id,' = OLD.',@id)"/>
-						</xsl:for-each>;
-					IF NOT FOUND THEN
-						BEGIN
-							INSERT INTO <xsl:value-of select="$rg_table"/> (date_time
-							<xsl:for-each select="field[@regFieldType='dimension' or @regFieldType='fact']">
-							,<xsl:value-of select="@id"/>
-							</xsl:for-each>)				
-							VALUES (CURRENT_BALANCE_DATE_TIME
-							<xsl:for-each select="field[@regFieldType='dimension']">
-							,OLD.<xsl:value-of select="@id"/>
-							</xsl:for-each>
-							<xsl:for-each select="field[@regFieldType='fact']">
-							,v_delta_<xsl:value-of select="@id"/>
-							</xsl:for-each>);
-						EXCEPTION WHEN OTHERS THEN
-							UPDATE <xsl:value-of select="$rg_table"/>
-							SET
-							<xsl:for-each select="field[@regFieldType='fact']">
-							<xsl:if test="position() &gt; 1">,</xsl:if>
-							<xsl:value-of select="concat(@id,' = ',@id,' + ','v_delta_',@id)"/>
-							</xsl:for-each>
-							WHERE 
-								date_time=CURRENT_BALANCE_DATE_TIME
-								<xsl:for-each select="field[@regFieldType='dimension']">
-								AND <xsl:value-of select="concat(@id,' = OLD.',@id)"/>
-								</xsl:for-each>;
-						END;
-					END IF;					
+					);
 					RETURN OLD;					
 				END IF;
 			END;
@@ -682,6 +619,8 @@ ALTER FUNCTION <xsl:value-of select="@refTable"/>_ref(<xsl:value-of select="@ref
 	</xsl:for-each>				
 	)
 </xsl:variable>
+<!--<xsl:variable name="reg_type_id" select="@regTypeId"/>-->
+<xsl:variable name="reg_type_id" select="/metadata/models/model[@id=$ra_model_id]/@regTypeId"/>
 CREATE OR REPLACE FUNCTION <xsl:value-of select="$func_prototype"/>
   RETURNS TABLE(
 	<xsl:for-each select="/metadata/models/model[@id=$ra_model_id]/field[@regFieldType='dimension']">
@@ -709,11 +648,11 @@ CREATE OR REPLACE FUNCTION <xsl:value-of select="$func_prototype"/>
 	) AS
 $BODY$
 	WITH
-	cur_per AS (SELECT rg_period('<xsl:value-of select="@regTypeId"/>'::reg_types, in_date_time) AS v ),
+	cur_per AS (SELECT rg_period('<xsl:value-of select="$reg_type_id"/>'::reg_types, in_date_time) AS v ),
 	
 	act_forward AS (
 		SELECT
-			rg_period_balance('<xsl:value-of select="@regTypeId"/>'::reg_types,in_date_time) - in_date_time >
+			rg_period_balance('<xsl:value-of select="$reg_type_id"/>'::reg_types,in_date_time) - in_date_time >
 			(SELECT t.v FROM cur_per t) - in_date_time
 			AS v
 	),
@@ -742,11 +681,11 @@ $BODY$
 		
 		(
 			--date bigger than last calc period
-			(in_date_time > rg_period_balance('<xsl:value-of select="@regTypeId"/>'::reg_types,rg_calc_period('<xsl:value-of select="@regTypeId"/>'::reg_types)) AND b.date_time = (SELECT rg_current_balance_time()))
+			(in_date_time > rg_period_balance('<xsl:value-of select="$reg_type_id"/>'::reg_types,rg_calc_period('<xsl:value-of select="$reg_type_id"/>'::reg_types)) AND b.date_time = (SELECT rg_current_balance_time()))
 			
 			OR (
 			--forward from previous period
-			( (SELECT t.v FROM act_forward t) AND b.date_time = (SELECT t.v FROM cur_per t)-rg_calc_interval('<xsl:value-of select="@regTypeId"/>'::reg_types)
+			( (SELECT t.v FROM act_forward t) AND b.date_time = (SELECT t.v FROM cur_per t)-rg_calc_interval('<xsl:value-of select="$reg_type_id"/>'::reg_types)
 			)
 			--backward from current
 			OR			
@@ -969,8 +908,7 @@ ALTER FUNCTION <xsl:value-of select="$func3_prototype"/> OWNER TO <xsl:value-of 
 </xsl:if>
 
 <!-- open new period-->			
-<xsl:variable name="reg_type_id" select="/metadata/models/model[@id=$ra_model_id]/@regTypeId"/>
-<xsl:variable name="open_period_prototype" select="concat('reg_',$reg_type_id,'_set_custom_period(IN in_new_period timestamp without time zone)')"/>
+<xsl:variable name="open_period_prototype" select="concat('rg_',$reg_type_id,'_set_custom_period(IN in_new_period timestamp without time zone)')"/>
 CREATE OR REPLACE FUNCTION <xsl:value-of select="$open_period_prototype"/>
   RETURNS void AS
 $BODY$
@@ -1033,14 +971,21 @@ BEGIN
 	DELETE FROM <xsl:value-of select="@dataTable"/>
 	WHERE date_time=TA_PERIOD;
 	INSERT INTO <xsl:value-of select="@dataTable"/>
-	(date_time,store_id,stock_type,material_id,doc_procurement_id,quant,cost)
+	(date_time
+	<xsl:for-each select="/metadata/models/model[@id=$ra_model_id]/field[@regFieldType='dimension']">
+	,<xsl:value-of select="@id"/>
+	</xsl:for-each>				
+	<xsl:for-each select="/metadata/models/model[@id=$ra_model_id]/field[@regFieldType='fact']">
+	,<xsl:value-of select="@id"/>
+	</xsl:for-each>	
+	)
 	(SELECT
-			TA_PERIOD
+		TA_PERIOD
 		<xsl:for-each select="/metadata/models/model[@id=$ra_model_id]/field[@regFieldType='dimension']">
-		,<xsl:value-of select="@id"/>
+		,rg.<xsl:value-of select="@id"/>
 		</xsl:for-each>				
 		<xsl:for-each select="/metadata/models/model[@id=$ra_model_id]/field[@regFieldType='fact']">
-		,<xsl:value-of select="@id"/>
+		,rg.<xsl:value-of select="@id"/>
 		</xsl:for-each>
 		FROM rg_materials AS rg
 		WHERE (
@@ -1049,7 +994,7 @@ BEGIN
 		rg.<xsl:value-of select="@id"/>&lt;&gt;0
 		</xsl:for-each>									
 		)
-		AND (rg.date_time=NEW_PERIOD)
+		AND (rg.date_time=NEW_PERIOD-REG_INTERVAL)
 	);
 
 	DELETE FROM rg_materials WHERE (date_time>NEW_PERIOD)
@@ -1096,13 +1041,14 @@ ALTER FUNCTION <xsl:value-of select="$open_period_prototype"/> OWNER TO <xsl:val
 			DROP TYPE <xsl:value-of select="$enum_id"/>;
 		</xsl:when>
 		<xsl:when test="@cmd=$CMD_CREATE">
-			CREATE TYPE <xsl:value-of select="$enum_id"/> AS ENUM (
-			<xsl:for-each select="value">
-				<xsl:if test="position() &gt; 1">,</xsl:if>
-				'<xsl:value-of select="@id"/>'			
-			</xsl:for-each>			
-			);
-			ALTER TYPE <xsl:value-of select="$enum_id"/> OWNER TO <xsl:value-of select="/metadata/@owner"/>;
+	-- Adding new type
+	CREATE TYPE <xsl:value-of select="$enum_id"/> AS ENUM (
+	<xsl:for-each select="value">
+		<xsl:if test="position() &gt; 1">,</xsl:if>
+		'<xsl:value-of select="@id"/>'			
+	</xsl:for-each>			
+	);
+	ALTER TYPE <xsl:value-of select="$enum_id"/> OWNER TO <xsl:value-of select="/metadata/@owner"/>;
 		</xsl:when>
 		<xsl:when test="@cmd=$CMD_ALTER">
 			<xsl:for-each select="value[@cmd=$CMD_CREATE or @cmd=$CMD_ALTER]">
@@ -1116,14 +1062,15 @@ ALTER FUNCTION <xsl:value-of select="$open_period_prototype"/> OWNER TO <xsl:val
 			</xsl:for-each>			
 		</xsl:when>
 		<xsl:when test="@cmd=$CMD_RENAME">
-			ALTER TYPE <xsl:value-of select="@id"/> RENAME TO <xsl:value-of select="@newId"/>;
+	--renaming type
+	ALTER TYPE <xsl:value-of select="@id"/> RENAME TO <xsl:value-of select="@newId"/>;
 		</xsl:when>
 		<xsl:otherwise>
 		</xsl:otherwise>
 	</xsl:choose>
 	<!-- function-->
 	<xsl:if test="@cmd=$CMD_CREATE or @cmd=$CMD_ALTER or @cmd=$CMD_RENAME">
-	/* function */
+	/* type get function */
 	CREATE OR REPLACE FUNCTION <xsl:value-of select="$func"/>
 	RETURNS text AS $$
 		SELECT
@@ -1254,7 +1201,7 @@ ALTER FUNCTION <xsl:value-of select="$open_period_prototype"/> OWNER TO <xsl:val
 	</xsl:call-template>
 		
 		<!-- NULL -->
-		<xsl:if test="@required='TRUE' and not(@primaryKey='TRUE')">
+		<xsl:if test="@primaryKey='TRUE' or ((@dbRequired='TRUE' or (not(@dbRequired) and @required='TRUE') ) and not(@primaryKey='TRUE'))">
 			<xsl:value-of select="' NOT NULL'"/>
 		</xsl:if>
 		
@@ -1357,6 +1304,7 @@ ALTER FUNCTION <xsl:value-of select="../@id"/>_descr(<xsl:value-of select="../@d
 		<xsl:when test="$data_type=$DT_JSONB">jsonb</xsl:when>
 		<xsl:when test="$data_type=$DT_ARRAY"><xsl:value-of select="@arrayType"/>[]</xsl:when>
 		<xsl:when test="$data_type=$DT_XML">xml</xsl:when>
+		<xsl:when test="$data_type=$DT_BYTEA">bytea</xsl:when>
 		
 		<xsl:otherwise>
 			<xsl:value-of select="concat(' UNSUPPORTED_DATA_TYPE(',$length,')')"/>				
@@ -1404,15 +1352,18 @@ select="substring-after($text,$replace)"/>
 	<xsl:apply-templates select="constant"/>	
 	<xsl:choose>
 	<xsl:when test="@cmd=$CMD_CREATE or @cmd=$CMD_ALTER or @cmd=$CMD_DROP">
-		CREATE OR REPLACE VIEW constants_list_view AS
-		<xsl:for-each select="constant[not(@cmd) or not(@cmd=$CMD_DROP)]">
-		<xsl:if test="position() &gt; 1">
-		UNION ALL
-		</xsl:if>
-		SELECT *
-		FROM <xsl:value-of select="concat('const_',@id,'_view')"/>
-		</xsl:for-each>;
-		ALTER VIEW constants_list_view OWNER TO ;
+	
+	CREATE OR REPLACE VIEW constants_list_view AS
+	<xsl:for-each select="constant[not(@cmd) or not(@cmd=$CMD_DROP)]">
+	<xsl:if test="position() &gt; 1">
+	UNION ALL
+	</xsl:if>
+	SELECT *
+	FROM <xsl:value-of select="concat('const_',@id,'_view')"/>
+	</xsl:for-each>
+	ORDER BY name;
+	ALTER VIEW constants_list_view OWNER TO <xsl:value-of select="/metadata/@owner"/>;
+	
 	</xsl:when>
 	<xsl:otherwise>
 	</xsl:otherwise>
@@ -1434,39 +1385,39 @@ select="substring-after($text,$replace)"/>
 			<xsl:with-param name="length" select="@length"/>
 			<xsl:with-param name="precision" select="@precision"/></xsl:call-template>	
 		</xsl:variable>
-		--constant value table
-		CREATE TABLE IF NOT EXISTS <xsl:value-of select="$table_name"/>
-		(name text, descr text, val <xsl:value-of select="$create_dt"/>,
-			val_type text,ctrl_class text,ctrl_options json, view_class text,view_options json);
-		<xsl:if test="/metadata/@owner">ALTER TABLE <xsl:value-of select="$table_name"/> OWNER TO <xsl:value-of select="/metadata/@owner"/>;</xsl:if>
-		INSERT INTO <xsl:value-of select="$table_name"/> (name,descr,val,val_type,ctrl_class,ctrl_options,view_class,view_options) VALUES (
-			'<xsl:value-of select="@name"/>'
-			,'<xsl:value-of select="@descr"/>'
-			,<xsl:choose>
-			<xsl:when test="@defaultValue">
-				<xsl:choose>
-				<xsl:when test="@dataType=$DT_STRING or @dataType=$DT_CHAR or @dataType=$DT_DATE or @dataType=$DT_DATETIME or @dataType=$DT_DATETIMETZ or @dataType=$DT_TIME or @dataType=$DT_TIMETZ or @dataType=$DT_INTERVAL or @dataType=$DT_TEXT or @dataType=$DT_PWD">
-				'<xsl:value-of select="@defaultValue"/>'
-				</xsl:when>
-				<xsl:otherwise><xsl:value-of select="@defaultValue"/></xsl:otherwise>
-				</xsl:choose>
+	-- ********** constant value table  <xsl:value-of select="@id"/> *************
+	CREATE TABLE IF NOT EXISTS <xsl:value-of select="$table_name"/>
+	(name text, descr text, val <xsl:value-of select="$create_dt"/>,
+		val_type text,ctrl_class text,ctrl_options json, view_class text,view_options json);
+	<xsl:if test="/metadata/@owner">ALTER TABLE <xsl:value-of select="$table_name"/> OWNER TO <xsl:value-of select="/metadata/@owner"/>;</xsl:if>
+	INSERT INTO <xsl:value-of select="$table_name"/> (name,descr,val,val_type,ctrl_class,ctrl_options,view_class,view_options) VALUES (
+		'<xsl:value-of select="@name"/>'
+		,'<xsl:value-of select="@descr"/>'
+		,<xsl:choose>
+		<xsl:when test="@defaultValue">
+			<xsl:choose>
+			<xsl:when test="@dataType=$DT_STRING or @dataType=$DT_CHAR or @dataType=$DT_DATE or @dataType=$DT_DATETIME or @dataType=$DT_DATETIMETZ or @dataType=$DT_TIME or @dataType=$DT_TIMETZ or @dataType=$DT_INTERVAL or @dataType=$DT_TEXT or @dataType=$DT_PWD">
+			'<xsl:value-of select="@defaultValue"/>'
 			</xsl:when>
-			<xsl:otherwise>NULL</xsl:otherwise>
+			<xsl:otherwise><xsl:value-of select="@defaultValue"/></xsl:otherwise>
 			</xsl:choose>
-			,<xsl:choose><xsl:when test="@refTable">'Ref'</xsl:when><xsl:otherwise>'<xsl:value-of select="@dataType"/>'</xsl:otherwise></xsl:choose>
-			,<xsl:choose><xsl:when test="@ctrlClass">'<xsl:value-of select="@ctrlClass"/>'</xsl:when><xsl:otherwise>NULL</xsl:otherwise></xsl:choose>
-			,<xsl:choose><xsl:when test="@ctrlOptions">'<xsl:value-of select="@ctrlOptions"/>'</xsl:when><xsl:otherwise>NULL</xsl:otherwise></xsl:choose>
-			,<xsl:choose><xsl:when test="@viewClass">'<xsl:value-of select="@viewClass"/>'</xsl:when><xsl:otherwise>NULL</xsl:otherwise></xsl:choose>
-			,<xsl:choose><xsl:when test="@viewOptions">'<xsl:value-of select="@viewOptions"/>'</xsl:when><xsl:otherwise>NULL</xsl:otherwise></xsl:choose>
-		);
+		</xsl:when>
+		<xsl:otherwise>NULL</xsl:otherwise>
+		</xsl:choose>
+		,<xsl:choose><xsl:when test="@refTable">'Ref'</xsl:when><xsl:otherwise>'<xsl:value-of select="@dataType"/>'</xsl:otherwise></xsl:choose>
+		,<xsl:choose><xsl:when test="@ctrlClass">'<xsl:value-of select="@ctrlClass"/>'</xsl:when><xsl:otherwise>NULL</xsl:otherwise></xsl:choose>
+		,<xsl:choose><xsl:when test="@ctrlOptions">'<xsl:value-of select="@ctrlOptions"/>'</xsl:when><xsl:otherwise>NULL</xsl:otherwise></xsl:choose>
+		,<xsl:choose><xsl:when test="@viewClass">'<xsl:value-of select="@viewClass"/>'</xsl:when><xsl:otherwise>NULL</xsl:otherwise></xsl:choose>
+		,<xsl:choose><xsl:when test="@viewOptions">'<xsl:value-of select="@viewOptions"/>'</xsl:when><xsl:otherwise>NULL</xsl:otherwise></xsl:choose>
+	);
 	</xsl:when>
 	<xsl:when test="@cmd=$CMD_DROP or @cmd=$CMD_ALTER">
-		DROP FUNCTION <xsl:value-of select="$func_prot"/>;
-		DROP FUNCTION <xsl:value-of select="$func_set_prot"/>;
-		DROP VIEW <xsl:value-of select="$view_name"/> CASCADE;
-		<xsl:if test="@cmd=$CMD_DROP">
-		DROP TABLE <xsl:value-of select="$table_name"/>;
-		</xsl:if>
+	DROP FUNCTION <xsl:value-of select="$func_prot"/>;
+	DROP FUNCTION <xsl:value-of select="$func_set_prot"/>;
+	DROP VIEW <xsl:value-of select="$view_name"/> CASCADE;
+	<xsl:if test="@cmd=$CMD_DROP">
+	DROP TABLE <xsl:value-of select="$table_name"/>;
+	</xsl:if>
 	</xsl:when>
 	</xsl:choose>
 	
@@ -1488,60 +1439,62 @@ select="substring-after($text,$replace)"/>
 		<xsl:otherwise><xsl:value-of select="$data_type"/></xsl:otherwise>
 		</xsl:choose>
 		</xsl:variable>
-		CREATE OR REPLACE FUNCTION <xsl:value-of select="$func_prot"/>
-		RETURNS <xsl:value-of select="$get_dt"/> AS
-		$BODY$
-			<xsl:choose>
-			<xsl:when test="@refTable">
-			<xsl:variable name="ref_table" select="@refTable"/>
-			<xsl:variable name="model" select="/metadata/models/model[@dataTable=$ref_table]"/>
-			SELECT <xsl:value-of select="@refTable"/>_ref(
-				(SELECT
-					ROW(<xsl:value-of select="@refTable"/>.*)::<xsl:value-of select="@refTable"/>
-				FROM <xsl:value-of select="@refTable"/>
-				WHERE <xsl:value-of select="$model/field[@primaryKey='TRUE']/@id"/> = (SELECT val FROM <xsl:value-of select="$table_name"/> LIMIT 1) LIMIT 1)
-				) AS val ;			
-			</xsl:when>
-			<xsl:otherwise>
-			SELECT val::<xsl:value-of select="$get_dt"/> AS val FROM <xsl:value-of select="$table_name"/> LIMIT 1;
-			</xsl:otherwise>
-			</xsl:choose>
-		$BODY$
-		LANGUAGE sql STABLE COST 100;
-		ALTER FUNCTION <xsl:value-of select="$func_prot"/> OWNER TO <xsl:value-of select="/metadata/@owner"/>;
-		
-		--constant set value
-		CREATE OR REPLACE FUNCTION <xsl:value-of select="$func_set_prot"/>
-		RETURNS void AS
-		$BODY$
-			UPDATE <xsl:value-of select="$table_name"/> SET val=$1;
-		$BODY$
-		LANGUAGE sql VOLATILE COST 100;
-		ALTER FUNCTION <xsl:value-of select="$func_set_prot"/> OWNER TO <xsl:value-of select="/metadata/@owner"/>;
-		
-		--edit view: all keys and descr
-		CREATE OR REPLACE VIEW <xsl:value-of select="$view_name"/> AS
-		SELECT
-			'<xsl:value-of select="@id"/>'::text AS id
-			,t.name
-			,t.descr
-		,<xsl:choose>
-		<xsl:when test="@refTable">	
-		<xsl:value-of select="$func_prot"/>::text AS val
+	CREATE OR REPLACE FUNCTION <xsl:value-of select="$func_prot"/>
+	RETURNS <xsl:value-of select="$get_dt"/> AS
+	$BODY$
+		<xsl:choose>
+		<xsl:when test="@refTable">
+		<xsl:variable name="ref_table" select="@refTable"/>
+		<xsl:variable name="model" select="/metadata/models/model[@dataTable=$ref_table]"/>
+		SELECT <xsl:value-of select="@refTable"/>_ref(
+			(SELECT
+				ROW(<xsl:value-of select="@refTable"/>.*)::<xsl:value-of select="@refTable"/>
+			FROM <xsl:value-of select="@refTable"/>
+			WHERE <xsl:value-of select="$model/field[@primaryKey='TRUE']/@id"/> = (SELECT val FROM <xsl:value-of select="$table_name"/> LIMIT 1) LIMIT 1)
+			) AS val ;			
 		</xsl:when>
 		<xsl:otherwise>
-		t.val::text AS val
+		SELECT val::<xsl:value-of select="$get_dt"/> AS val FROM <xsl:value-of select="$table_name"/> LIMIT 1;
 		</xsl:otherwise>
 		</xsl:choose>
-		,t.val_type::text AS val_type
-		,t.ctrl_class::text
-		,t.ctrl_options::json
-		,t.view_class::text
-		,t.view_options::json
-		FROM <xsl:value-of select="$table_name"/> AS t
-		;
-		ALTER VIEW <xsl:value-of select="$view_name"/> OWNER TO <xsl:value-of select="/metadata/@owner"/>;
+	$BODY$
+	LANGUAGE sql STABLE COST 100;
+	ALTER FUNCTION <xsl:value-of select="$func_prot"/> OWNER TO <xsl:value-of select="/metadata/@owner"/>;
+	
+	--constant set value
+	CREATE OR REPLACE FUNCTION <xsl:value-of select="$func_set_prot"/>
+	RETURNS void AS
+	$BODY$
+		UPDATE <xsl:value-of select="$table_name"/> SET val=$1;
+	$BODY$
+	LANGUAGE sql VOLATILE COST 100;
+	ALTER FUNCTION <xsl:value-of select="$func_set_prot"/> OWNER TO <xsl:value-of select="/metadata/@owner"/>;
+	
+	--edit view: all keys and descr
+	CREATE OR REPLACE VIEW <xsl:value-of select="$view_name"/> AS
+	SELECT
+		'<xsl:value-of select="@id"/>'::text AS id
+		,t.name
+		,t.descr
+	,<xsl:choose>
+	<xsl:when test="@refTable">	
+	<xsl:value-of select="$func_prot"/>::text AS val
+	</xsl:when>
+	<xsl:otherwise>
+	t.val::text AS val
+	</xsl:otherwise>
+	</xsl:choose>
+	,t.val_type::text AS val_type
+	,t.ctrl_class::text
+	,t.ctrl_options::json
+	,t.view_class::text
+	,t.view_options::json
+	FROM <xsl:value-of select="$table_name"/> AS t
+	;
+	ALTER VIEW <xsl:value-of select="$view_name"/> OWNER TO <xsl:value-of select="/metadata/@owner"/>;
+	
 	</xsl:if>
+	
 </xsl:template>
   
 <xsl:template name="common_functions">
@@ -1853,7 +1806,7 @@ ALTER FUNCTION <xsl:value-of select="$doc_act_func"/> OWNER TO <xsl:value-of sel
 		limited bool,
 	CONSTRAINT views_pkey PRIMARY KEY (id)
 	);
-	ALTER VIEW views OWNER TO ;	
+	ALTER VIEW views OWNER TO <xsl:value-of select="/metadata/@owner"/>;	
 	</xsl:when>	
 	<xsl:otherwise>
 	</xsl:otherwise>
@@ -1865,17 +1818,20 @@ ALTER FUNCTION <xsl:value-of select="$doc_act_func"/> OWNER TO <xsl:value-of sel
 <xsl:template match="view">
 	<xsl:choose>
 	<xsl:when test="@cmd=$CMD_CREATE">
-		INSERT INTO views
-		(id,c,f,t,section,descr,limited)
-		VALUES (
-		'<xsl:value-of select="@id"/>',
-		<xsl:choose> <xsl:when test="@c and not(@c='')">'<xsl:value-of select="@c"/>'</xsl:when> <xsl:otherwise>NULL</xsl:otherwise> </xsl:choose>,
-		<xsl:choose> <xsl:when test="@f and not(@f='')">'<xsl:value-of select="@f"/>'</xsl:when> <xsl:otherwise>NULL</xsl:otherwise> </xsl:choose>,
-		<xsl:choose> <xsl:when test="@t and not(@t='')">'<xsl:value-of select="@t"/>'</xsl:when> <xsl:otherwise>NULL</xsl:otherwise> </xsl:choose>,
-		'<xsl:value-of select="@section"/>',
-		'<xsl:value-of select="@descr"/>',
-		<xsl:choose> <xsl:when test="@limit='TRUE'">TRUE</xsl:when> <xsl:otherwise>FALSE</xsl:otherwise> </xsl:choose>
-		);
+	
+	-- Adding menu item
+	INSERT INTO views
+	(id,c,f,t,section,descr,limited)
+	VALUES (
+	'<xsl:value-of select="@id"/>',
+	<xsl:choose> <xsl:when test="@c and not(@c='')">'<xsl:value-of select="@c"/>'</xsl:when> <xsl:otherwise>NULL</xsl:otherwise> </xsl:choose>,
+	<xsl:choose> <xsl:when test="@f and not(@f='')">'<xsl:value-of select="@f"/>'</xsl:when> <xsl:otherwise>NULL</xsl:otherwise> </xsl:choose>,
+	<xsl:choose> <xsl:when test="@t and not(@t='')">'<xsl:value-of select="@t"/>'</xsl:when> <xsl:otherwise>NULL</xsl:otherwise> </xsl:choose>,
+	'<xsl:value-of select="@section"/>',
+	'<xsl:value-of select="@descr"/>',
+	<xsl:choose> <xsl:when test="@limit='TRUE'">TRUE</xsl:when> <xsl:otherwise>FALSE</xsl:otherwise> </xsl:choose>
+	);
+	
 	</xsl:when>
 	<xsl:when test="@cmd=$CMD_ALTER">
 		UPDATE views SET
@@ -1895,5 +1851,30 @@ ALTER FUNCTION <xsl:value-of select="$doc_act_func"/> OWNER TO <xsl:value-of sel
 	</xsl:choose>
 </xsl:template>
 
+<xsl:template match="predefinedItem">
+	<xsl:choose>
+	<xsl:when test="@cmd=$CMD_CREATE">
+		INSERT INTO <xsl:value-of select="../../@dataTable"/>
+		(<xsl:for-each select="*"> <xsl:if test="position() &gt;1">,</xsl:if> <xsl:value-of select="local-name()"/> </xsl:for-each>)
+		VALUES (
+		<xsl:for-each select="*"> <xsl:if test="position() &gt;1">,</xsl:if>'<xsl:value-of select="node()"/>'</xsl:for-each>
+		);
+	</xsl:when>
+	<xsl:when test="@cmd=$CMD_ALTER">
+		UPDATE <xsl:value-of select="../../@dataTable"/> SET
+		WHERE
+		<xsl:for-each select="*"> <xsl:if test="position() &gt;1"> AND </xsl:if> <xsl:value-of select="local-name()"/>= '<xsl:value-of select="node()"/>' </xsl:for-each>
+		;
+	</xsl:when>
+	<xsl:when test="@cmd=$CMD_DROP">
+		DELETE FROM <xsl:value-of select="../../@dataTable"/> WHERE
+		<xsl:for-each select="*"> <xsl:if test="position() &gt;1"> AND </xsl:if> <xsl:value-of select="local-name()"/>= '<xsl:value-of select="node()"/>' </xsl:for-each>
+		;
+	</xsl:when>	
+	<xsl:otherwise>
+	</xsl:otherwise>
+	</xsl:choose>
+
+</xsl:template>
 
 </xsl:stylesheet>

@@ -151,7 +151,7 @@ class <xsl:value-of select="@id"/>_Controller extends ControllerSQL{
 			sprintf(
 			"SELECT 
 				u.*
-			FROM user_view AS u
+			FROM users_view AS u
 			WHERE (u.name=%s OR u.email=%s) AND u.pwd=md5(%s)",
 			$this->getExtDbVal($pm,'name'),
 			$this->getExtDbVal($pm,'name'),

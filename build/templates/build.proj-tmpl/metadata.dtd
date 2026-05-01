@@ -79,11 +79,15 @@
 <!ATTLIST model regTypeId CDATA #IMPLIED>
 <!ATTLIST model lastRowSelectOnInit (TRUE|FALSE) #IMPLIED>
 <!ATTLIST model limitConstant CDATA #IMPLIED>
+<!ATTLIST model limitCount CDATA #IMPLIED>
+<!ATTLIST model calcHash (TRUE|FALSE) "FALSE">
 <!ATTLIST model period CDATA #IMPLIED>
 <!ATTLIST model cmd (alt|del|add) #IMPLIED>
 <!ATTLIST model server (TRUE|FALSE) #IMPLIED>
 <!ATTLIST model client (TRUE|FALSE) #IMPLIED>
-
+<!ATTLIST model activityLog (TRUE|FALSE) #IMPLIED>
+<!ATTLIST model objRef (TRUE|FALSE) #IMPLIED>
+<!ATTLIST model dataSchema CDATA #IMPLIED>
 
 
 <!ELEMENT index (field*,expression*)>
@@ -99,6 +103,7 @@
 <!ATTLIST field primaryKey (TRUE|FALSE) #IMPLIED>
 <!ATTLIST field autoInc (TRUE|FALSE) #IMPLIED>
 <!ATTLIST field required (TRUE|FALSE) #IMPLIED>
+<!ATTLIST field dbRequired (TRUE|FALSE) #IMPLIED>
 <!ATTLIST field sysCol (TRUE|FALSE) #IMPLIED>
 <!ATTLIST field display (TRUE|FALSE) #IMPLIED>
 <!ATTLIST field alias CDATA #IMPLIED>
@@ -112,6 +117,8 @@
 <!ATTLIST field regFieldType (dimension|fact) #IMPLIED>
 <!ATTLIST field cmd (alt|del|add) #IMPLIED>
 <!ATTLIST field sortDirect (ASC|DESC) #IMPLIED>
+<!ATTLIST field retAfterInsert (TRUE|FALSE) #IMPLIED>
+<!ATTLIST field noValueOnCopy (TRUE|FALSE) #IMPLIED>
 
 
 <!ELEMENT registerAtcs (register*)>
@@ -125,6 +132,7 @@
 <!ATTLIST constant name CDATA #REQUIRED>
 <!ATTLIST constant descr CDATA #REQUIRED>
 <!ATTLIST constant dataType (Bool|Char|String|Int|Date|Time|TimeTZ|DateTime|DateTimeTZ|Float|Text|Enum|Password|Interval|JSON|JSONB|Array|XML|GeomPolygon|GeomPoint) #REQUIRED>
+<!ATTLIST constant arrayType (Bool|Char|String|Int|Date|Time|TimeTZ|DateTime|DateTimeTZ|Float|Text|Enum|Password|Interval|JSON|JSONB|Array|XML|GeomPolygon|GeomPoint) #IMPLIED>
 <!ATTLIST constant refTable CDATA #IMPLIED>
 <!ATTLIST constant refField CDATA #IMPLIED>
 <!ATTLIST constant autoload (TRUE|FALSE) "TRUE">
@@ -156,7 +164,13 @@
 <!ATTLIST publicMethod modelId CDATA #IMPLIED>
 <!ATTLIST publicMethod patternFieldId CDATA #IMPLIED>
 <!ATTLIST publicMethod condFields (TRUE|FALSE) #IMPLIED>
+<!ATTLIST publicMethod paginationFields (TRUE|FALSE) #IMPLIED>
 <!ATTLIST publicMethod requestType (post|get) #IMPLIED>
+<!ATTLIST publicMethod publishEvent (TRUE|FALSE) #IMPLIED>
+
+<!ELEMENT structs (struct+)>
+<!ELEMENT struct (field*)>
+<!ATTLIST struct id CDATA #REQUIRED>
 
 
 <!ELEMENT permissions (permission+)>
@@ -201,6 +215,7 @@
 <!ELEMENT jsScript EMPTY>
 <!ATTLIST jsScript file CDATA #REQUIRED>
 <!ATTLIST jsScript compressed (TRUE|FALSE) #IMPLIED>
+<!ATTLIST jsScript jsDoc (TRUE|FALSE) #IMPLIED>
 <!ATTLIST jsScript standalone (TRUE|FALSE) #IMPLIED>
 <!ATTLIST jsScript version CDATA #IMPLIED>
 <!ATTLIST jsScript resource (ru|eng) #IMPLIED>

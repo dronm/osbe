@@ -10,16 +10,21 @@
  * @param {Object} options
  */
 function ValidatorEmail(options){
+
+	options.maxLength = this.MAX_LENGTH;
+	
 	ValidatorEmail.superclass.constructor.call(this,options);
 }
 extend(ValidatorEmail,ValidatorString);
+
+ValidatorEmail.prototype.MAX_LENGTH = 100;
 
 ValidatorEmail.prototype.validate = function(val){
 	
 	ValidatorEmail.superclass.validate.call(this,val);
 	
 	var re = /\S+@\S+\.\S+/;
-	if (!re.test(val)){
+	if (val&&val.length&&!re.test(val)){
 		throw new Error(this.ER_INVALID);
 	}
 }

@@ -198,7 +198,7 @@ class <xsl:value-of select="@id"/>_Controller extends Controller{
 			),
 			$this->log
 		);
-		$this->printLog();	
+		$this->printLog();
 	}
 	
 }

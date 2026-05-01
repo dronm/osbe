@@ -5,6 +5,7 @@
  * @classdesc Shows print window with content
  
  * @param {namespace} options
+ * @param {object} winOptions 
  * @param {bool} [options.print=true] print and close window
  * @param {string} [options.template=app.getTemplate("WindowPrint")]
  * @param {string} options.title window title
@@ -13,9 +14,10 @@
 var WindowPrint = {
 	show:function(options){
 		options = options || {};
-		var win_opts = {"name":"Print?"+CommonHelper.uniqid()};
+		var win_opts = options.winOptions || {};
+		win_opts["name"] = "Print?"+CommonHelper.uniqid();
 		var print_and_close = (options.print!=undefined)? options.print:true;
-		win_opts.title = this.TITLE + ( (options.title!=undefined)? options.title:"" );
+		win_opts.title = this.TITLE + ( (options.title!=undefined)? ": "+options.title:"" );
 		
 		var template = options.template || window.getApp().getTemplate("WindowPrint");
 		win_opts.content = Mustache.render(

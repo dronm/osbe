@@ -4,13 +4,27 @@ require_once(FRAME_WORK_PATH.'db/db_pgsql.php');
 require_once("EmailSender.php");
 
 class CustomEmailSender extends EmailSender{
-	public static function addEMail(
-			$link,
+
+	public static function getMailAuth(&$dbLink){
+		return $dbLink->query_first(
+			"WITH mail_data AS (SELECT const_outmail_data_val() AS v)
+			SELECT
+				(SELECT v->>'smtp_host' FROM mail_data) AS smtp_host,
+				(SELECT v->>'smtp_port' FROM mail_data) AS smtp_port,
+				(SELECT v->>'smtp_user' FROM mail_data) AS smtp_user,
+				(SELECT v->>'smtp_pwd' FROM mail_data) AS smtp_pwd,
+				(SELECT v->>'from_name' FROM mail_data) AS from_name,
+				(SELECT v->>'from_addr' FROM mail_data) AS from_addr"
+		);	
+	}
+
+	public static function regMail(
+			$dbLink,
 			$funcText,
 			$attArray=NULL,
 			$smsType=NULL
 		){
-		$ar = $link->query_first(sprintf(
+		$ar = $dbLink->query_first(sprintf(
 		//throw new Exception(sprintf(
 		"SELECT * FROM %s AS (
 			body text,
@@ -22,34 +36,40 @@ class CustomEmailSender extends EmailSender{
 		));
 		
 		$mail_id = NULL;
-		if (is_array($ar)&&count($ar)){
-			$mail_id = parent::addEMail(
-				$link,
-				EMAIL_FROM_ADDR,EMAIL_FROM_NAME,
+		if (is_array($ar) && count($ar)){
+		
+			$auth = self::getMailAuth($dbLink);
+			
+			$mail_id = EmailSender::addEMail(
+				$dbLink,
+				$auth['from_addr'],$auth['from_name'],
 				$ar['email'],$ar['client'],
-				EMAIL_FROM_ADDR,EMAIL_FROM_NAME,
-				EMAIL_FROM_ADDR,
+				$auth['from_addr'],$auth['from_name'],
+				$auth['from_addr'],
 				$ar['mes_subject'],
 				$ar['body']	,
 				$smsType			
 			);
 			if (is_array($attArray)){
 				foreach ($attArray as $f){
-					self::addAttachment($link,$mail_id,$f);
+					self::addAttachment($dbLink,$mail_id,$f);
 				}
 			}
 		}
 		return $mail_id;
 	}
-	public static function sendAllMail($delFiles=TRUE){
-		$dbLink = new DB_Sql();
-		$dbLink->persistent=true;
-		$dbLink->database	= DB_NAME;			
-		$dbLink->connect(DB_SERVER_MASTER,DB_USER,DB_PASSWORD);
+	
+	public static function sendAllMail($delFiles=TRUE,&$db,$smtpHost=NULL,$smtpPort=NULL,$smtpUser=NULL,$smtpPwd=NULL){
 		
-		parent::sendAllMail($dbLink,
-				SMTP_HOST,SMTP_PORT,SMTP_USER,SMTP_PWD,
-				$delFiles);
+		//$smtpHost = is_null($smtpHost)? SMTP_HOST:$smtpHost;
+		//$smtpPort = is_null($smtpPort)? SMTP_PORT:$smtpPort;
+		//$smtpUser = is_null($smtpUser)? SMTP_USER:$smtpUser;
+		//$smtpPwd = is_null($smtpPwd)? SMTP_PWD:$smtpPwd;
+		$ar = self::getMailAuth($db);
+		
+		parent::sendAllMail($delFiles,$db,
+				$ar['smtp_host'],$ar['smtp_port'],$ar['smtp_user'],$ar['smtp_pwd']
+		);
 	}
 	
 }

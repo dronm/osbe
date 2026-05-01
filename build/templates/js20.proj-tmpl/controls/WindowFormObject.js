@@ -28,7 +28,7 @@ function WindowFormObject(options){
 	options.URLParams = options.URLParams || "";
 	
 	if (options.formName){
-		options.controller = options.controller || options.formName+"_Controller";
+		//options.controller = options.controller || options.formName+"_Controller";
 		options.template = options.template || options.formName;
 	}
 	
@@ -39,7 +39,7 @@ function WindowFormObject(options){
 	if (options.fullScreen==undefined && options.width==undefined && options.height==undefined){
 		options.fullScreen = true;
 	}
-	options.name = options.formName+CommonHelper.serialize(options.keys);
+	options.name = options.name||options.formName;//+CommonHelper.serialize(options.keys);
 	
 	this.setController(options.controller);
 	this.setMethod(options.method);
@@ -48,6 +48,19 @@ function WindowFormObject(options){
 	this.setKeys(options.keys);
 	this.setMode((options.params && options.params.cmd)? options.params.cmd:null);  
 	
+	/*
+	if(options.URLParams.length){
+		options.params = options.params || {};
+		options.params.editViewOptions = {};
+		var url_par_ar = options.URLParams.split("&");
+		for(var i=0;i<url_par_ar.length;i++){
+			url_par_v_ar = url_par_ar[i].split("=");
+			if(url_par_v_ar&&url_par_v_ar.length==2){
+				options.params.editViewOptions[url_par_v_ar[0]] = url_par_v_ar[1];
+			}
+		}
+	}	
+	*/
 	WindowFormObject.superclass.constructor.call(this,options);
 	
 }
@@ -69,11 +82,11 @@ WindowFormObject.prototype.m_mode;
 
 /* public methods */
 WindowFormObject.prototype.getURLParams = function(){
-	var str = "c="+this.m_controller;
-	str += "&f="+this.m_method;
+	var str = this.m_controller? ("c="+this.m_controller):"";
+	if(this.m_method)str += "&f="+this.m_method;
 	if(this.m_template) str += "&t="+this.m_template;
 	if(this.m_mode) str += "&mode="+this.m_mode;
-	str += "&v="+this.m_view;
+	str += ((str=="")? "":"&") + "v="+this.m_view;
 	
 	for(var fid in this.m_keys){
 		if (this.m_keys[fid]!=undefined){
@@ -83,6 +96,11 @@ WindowFormObject.prototype.getURLParams = function(){
 	
 	if (this.m_URLParams){
 		str += "&"+this.m_URLParams;
+	}
+	
+	var conn = window.getApp().getServConnector();
+	if(conn.getAccessTokenParam){
+		str+= "&"+conn.getAccessTokenParam()+"="+conn.getAccessToken();
 	}
 	
 	return str;

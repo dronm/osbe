@@ -6,7 +6,7 @@ var WindowAbout = {
 			"controlCancelCaption":this.CMD_CLOSE_CAP,
 			"controlCancelTitle":this.CMD_CLOSE_TITLE,
 			"cmdOk":false,
-			"onClickCancel":function(){
+			"onClickCancel":function(f){
 				self.m_form.close();
 			},		
 			"content":view,

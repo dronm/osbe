@@ -33,8 +33,15 @@ function ViewEditRef(id,options){
 	this.m_menuTree = options.menuTree;
 	var self = this;
 	
+	this.m_origOnSelect = options.onSelect;
 	options.onSelect = function(fields){
-		if(self.m_menuTree)self.m_menuTree.m_editViewDescr = fields.user_descr.getValue();
+		if(self.m_menuTree){
+			self.m_menuTree.m_editViewDescr = fields.user_descr.getValue();	
+		}
+		
+		if(self.m_origOnSelect){
+			self.m_origOnSelect.call(self,fields);
+		}
 	}
 		
 	ViewEditRef.superclass.constructor.call(this,id,options);

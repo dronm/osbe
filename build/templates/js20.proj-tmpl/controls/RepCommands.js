@@ -56,8 +56,7 @@ function RepCommands(id,options){
 			options.cmdMake : new GridCmd(id+":make",{
 				"onCommand":options.onReport,
 				"caption":this.BTN_MAKE_CAP,
-				"title":this.BTN_MAKE_TITLE,
-				"app":options.app
+				"title":this.BTN_MAKE_TITLE
 			})
 		);	
 	
@@ -68,8 +67,7 @@ function RepCommands(id,options){
 			this.setCmdFilterSave( (typeof(options.cmdFilterSave)=="object")?
 				options.cmdFilterSave : new GridCmdFilterSave(id+":filterSave",{
 					"variantStorageName":options.variantStorage.name,
-					"dataCol":"filter_data",
-					"app":options.app
+					"dataCol":"filter_data"
 				})
 			);
 		}		
@@ -78,8 +76,7 @@ function RepCommands(id,options){
 			this.setCmdFilterOpen( (typeof(options.cmdFilterOpen)=="object")?
 				options.cmdFilterOpen : new GridCmdFilterOpen(id+":filterOpen",{
 					"variantStorageName":options.variantStorage.name,
-					"dataCol":"filter_data",
-					"app":options.app
+					"dataCol":"filter_data"
 				})
 			);
 		}
@@ -89,8 +86,7 @@ function RepCommands(id,options){
 				"filters":options.filters,
 				"controlSave":this.getCmdFilterSave(),
 				"controlOpen":this.getCmdFilterOpen(),
-				"variantStorageModel":options.variantStorage.model,
-				"app":options.app
+				"variantStorageModel":options.variantStorage.model
 			})
 		);
 		/**
@@ -100,14 +96,13 @@ function RepCommands(id,options){
 	}
 
 	/* print */
-	if (options.cmdMake){
+	if (options.cmdPrint){
 		this.setCmdPrint( (typeof(options.cmdPrint)=="object")?
 			options.cmdPrint : new GridCmd(id+":print",{
 				"glyph":"glyphicon-print",
 				"onCommand":options.onPrint,
 				//"caption":this.BTN_PRINT_CAP,
-				"title":this.BTN_PRINT_TITLE,
-				"app":options.app
+				"title":this.BTN_PRINT_TITLE
 			})
 		);	
 		this.getCmdPrint().getControl().setEnabled(false);
@@ -117,11 +112,10 @@ function RepCommands(id,options){
 	if (options.cmdExcel){
 		this.setCmdExcel( (typeof(options.cmdExcel)=="object")?
 			options.cmdExcel : new GridCmd(id+":excel",{
-				"glyph":"glyphicon-file",
+				"glyph":"glyphicon-save-file",
 				"onCommand":options.onExcel,
 				//"caption":this.BTN_PRINT_CAP,
-				"title":this.BTN_EXCEL_TITLE,
-				"app":options.app
+				"title":this.BTN_EXCEL_TITLE
 			})
 		);	
 		this.getCmdExcel().getControl().setEnabled(false);
@@ -134,8 +128,7 @@ function RepCommands(id,options){
 				"glyph":"glyphicon-save-file",
 				"onCommand":options.onPdf,
 				//"caption":this.BTN_PRINT_CAP,
-				"title":this.BTN_PDF_TITLE,
-				"app":options.app
+				"title":this.BTN_PDF_TITLE
 			})
 		);	
 		this.getCmdPdf().getControl().setEnabled(false);

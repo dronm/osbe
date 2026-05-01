@@ -9,7 +9,8 @@ class FieldSQLInt extends FieldSQL{
 				$id, DT_INT,$options);
 	}
     public static function formatForDb($valIn,&$valOut){
-		$valOut = $valIn;
+		//$valOut = $valIn;
+		$valOut = (!isset($valIn) || !strlen($valIn) || strtolower($valIn)=='null' || strtolower($valIn)=='nan' || strtolower($valIn)=='undefined')? 'null' : intval($valIn);
     }	
 	
 }

@@ -1,20 +1,27 @@
-/* Copyright (c) 2016 
-	Andrey Mikhalevich, Katren ltd.
-*/
-/*	
-	Description
-*/
-/** Requirements
- * @requires 
- * @requires core/extend.js  
-*/
+/**	
+ * @author Andrey Mikhalevich <katrenplus@mail.ru>, 2016
 
-/* constructor
-@param string id
-@param object options{
+ * @extends EditRadioGroup
+ * @requires core/extend.js
+ * @requires EditRadioGroup.js     
 
-}
-*/
+ * @class
+ * @classdesc
+ 
+ * @param {string} id - Object identifier
+ * @param {object} options
+ * @param {bool} options.cashable
+ * @param {Model} options.model
+ * @param {PublicMethod} options.readPublicMethod
+ * @param {Field} options.keyField
+ * @param {string} options.keyFieldId
+ * @param {Field} options.descrField
+ * @param {string} options.descrFieldId
+ * @param {string} [options.notSelectedValue=DEF_NOT_SELECTED_VAL]
+ * @param {string} [options.notSelectedCaption=DEF_NOT_SELECTED_CAP]
+ * @param {int} [options.colCount=1]
+ * @param {string} options.modelDataStr      
+ */
 function EditRadioGroupRef(id,options){
 	options = options || {};	
 		

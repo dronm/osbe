@@ -1,0 +1,114 @@
+/** Copyright (c) 2022
+ *	Andrey Mikhalevich, Katren ltd.
+ */
+function {{BASE_MODEL_ID}}List_View(id,options){	
+
+	options = options || {};
+	options.HEAD_TITLE = "{{VIEWS_DESCR}}";
+
+	{{BASE_MODEL_ID}}List_View.superclass.constructor.call(this,id,options);
+	
+	var model = (options.models && options.models.{{BASE_MODEL_ID}}List_Model)? options.models.{{BASE_MODEL_ID}}List_Model : new {{BASE_MODEL_ID}}List_Model();
+	var contr = new {{BASE_MODEL_ID}}_Controller();
+	
+	var constants = {"doc_per_page_count":null,"grid_refresh_interval":null};
+	window.getApp().getConstantManager().get(constants);
+
+	var popup_menu = new PopUpMenu();
+	var pagClass = window.getApp().getPaginationClass();
+	{{#DATE_TIME_FIELD}}
+	var period_ctrl = new EditPeriodDate(id+":filter-ctrl-period",{
+		"field":new FieldDateTime("{{DATE_TIME_FIELD}}")
+	});
+	{{/DATE_TIME_FIELD}}
+	var filters = {
+		{{#DATE_TIME_FIELD}}
+		"period":{
+			"binding":new CommandBinding({
+				"control":period_ctrl,
+				"field":period_ctrl.getField()
+			}),
+			"bindings":[
+				{"binding":new CommandBinding({
+					"control":period_ctrl.getControlFrom(),
+					"field":period_ctrl.getField()
+					}),
+				"sign":"ge"
+				},
+				{"binding":new CommandBinding({
+					"control":period_ctrl.getControlTo(),
+					"field":period_ctrl.getField()
+					}),
+				"sign":"le"
+				}
+			]
+		}
+		{{/DATE_TIME_FIELD}}
+		{{#FIELDS}}
+		{{#FIELD_REF_TABLE}}
+		,"{{FIELD_FILTER_ID}}":{
+			"binding":new CommandBinding({
+				"control":new {{FIELD_EDIT_CLASS}}(id+":filter-ctrl-{{FIELD_FILTER_ID}}",{
+					"contClassName":"form-group-filter",
+					"labelCaption":"{{FIELD_ALIAS}}:"
+				}),
+				"field":new FieldInt("{{FIELD_FILTER_ID}}_id")}),
+			"sign":"e"		
+		}
+		{{/FIELD_REF_TABLE}}
+		{{/FIELDS}}
+	}	
+	this.addElement(new GridAjx(id+":grid",{
+		"model":model,
+		"controller":contr,
+		"editInline":false,
+		"editWinClass":{{BASE_MODEL_ID}}_Form,
+		"commands":new GridCmdContainerAjx(id+":grid:cmd",{
+			"cmdFilter":true,
+			"filters":filters,
+			"variantStorage":options.variantStorage	
+		}),		
+		"popUpMenu":popup_menu,
+		"head":new GridHead(id+"-grid:head",{
+			"elements":[
+				new GridRow(id+":grid:head:row0",{
+					"elements":[
+						{{#FIELDS}}
+						{{#NOT_FIRST}},{{/NOT_FIRST}}new GridCellHead(id+":grid:head:{{FIELD_ID}}",{
+							"value":"{{FIELD_ALIAS}}",
+							"columns":[
+								new {{JS_GRID_COL_CLASS}}({
+									"field": model.getField("{{JS_FIELD_ID}}")
+									{{#JS_CTRL_CLASS}},"ctrlClass":{{JS_CTRL_CLASS}}{{/JS_CTRL_CLASS}}
+									{{#JS_CTRL_BIND_FIELD_ID}},"ctrlBindFieldId":{{JS_CTRL_BIND_FIELD_ID}}{{/JS_CTRL_BIND_FIELD_ID}}
+									{{#JS_CTRL_OPTS_EXIST}}
+									,"ctrlBindFieldId":{
+										{{#JS_CTRL_OPTS}}
+										{{#NOT_FIRST}},{{/NOT_FIRST}}{{NAME}}: {{VALUE}}
+										{{/JS_CTRL_OPTS}}
+									}
+									{{/JS_CTRL_OPTS_EXIST}}
+								});
+							],
+							,"sortable":{{FIELD_SORT}}
+							{{#FIELD_SORT_ORD}},"sort": "{{FIELD_SORT_ORD}}"{{/FIELD_SORT_ORD}}
+						})
+						{{/FIELDS}}
+					]
+				})
+			]
+		}),
+		"pagination":new pagClass(id+"_page",
+			{"countPerPage":constants.doc_per_page_count.getValue()}),		
+		
+		"autoRefresh":false,
+		"refreshInterval":constants.grid_refresh_interval.getValue()*1000,
+		"rowSelect":false,
+		"focus":true
+	}));	
+	
+
+
+}
+extend{{BASE_MODEL_ID}}List_View, ViewAjxList);
+

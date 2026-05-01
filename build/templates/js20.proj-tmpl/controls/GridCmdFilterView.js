@@ -25,9 +25,10 @@
 function GridCmdFilterView(id,options){
 	options = options || {};	
 	
+	options.templateOptions = {"bsCol":window.getBsCol()};
 	options.template = window.getApp().getTemplate("GridCmdFilterView");
 	
-	GridCmdFilterView.superclass.constructor.call(this,id,"template",options);
+	GridCmdFilterView.superclass.constructor.call(this,id,"TEMPLATE",options);
 	
 	options.cmdSet = (options.cmdSet!=undefined)? options.cmdSet:true;
 	options.cmdUnset = (options.cmdUnset!=undefined)? options.cmdUnset:options.cmdSet;
@@ -42,8 +43,7 @@ function GridCmdFilterView(id,options){
 				"onClick":function(){
 					self.applyFilters();				
 				},
-				"attrs":{"title":this.SET_TITLE},
-				"app":window.getApp()
+				"attrs":{"title":this.SET_TITLE}
 				})
 		);	
 	}
@@ -56,8 +56,7 @@ function GridCmdFilterView(id,options){
 				"onClick":function(){
 					self.resetFilters();				
 				},
-				"attrs":{"title":this.UNSET_TITLE},
-				"app":window.getApp()
+				"attrs":{"title":this.UNSET_TITLE}
 				})
 		);	
 	}
@@ -69,8 +68,7 @@ function GridCmdFilterView(id,options){
 				"onClick":function(){
 					options.controlSave.onCommand();				
 				},
-				"attrs":{"title":this.m_origSave.getAttr("title")},
-				"app":window.getApp()
+				"attrs":{"title":this.m_origSave.getAttr("title")}
 		}));	
 	}
 	if (options.controlOpen){
@@ -80,8 +78,7 @@ function GridCmdFilterView(id,options){
 				"onClick":function(){
 					options.controlOpen.onCommand();				
 				},
-				"attrs":{"title":this.m_origOpen.getAttr("title")},
-				"app":window.getApp()
+				"attrs":{"title":this.m_origOpen.getAttr("title")}
 		}));	
 	}
 	
@@ -111,6 +108,7 @@ GridCmdFilterView.prototype.addControls = function(v){
 	if (this.m_filter){
 		var filters = this.m_filter.getFilters();	
 		for (var id in filters){
+			if(!filters[id]||!filters[id].binding)continue;
 			var ctrl = filters[id].binding.getControl();
 			ctrl.setVisible(true);
 			this.addElement(ctrl);

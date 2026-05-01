@@ -118,7 +118,8 @@ function EditObject(id,options){
 		"resultFieldId":options.resultFieldId,
 		"fullTextSearch":options.fullTextSearch,
 		"resultFieldIdsToAttr":options.resultFieldIdsToAttr,
-		"queryDelay":options.queryDelay
+		"queryDelay":options.queryDelay,
+		"updateInputOnCursor":options.acUpdateInputOnCursor
 		});
 		actb(this.m_node,this.m_winObj,this.m_autoComplete);
 	}	

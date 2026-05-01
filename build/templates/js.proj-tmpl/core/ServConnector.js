@@ -24,6 +24,12 @@ function ServConnector(host,script){
 ServConnector.prototype.DEF_SCRIPT='index.php';
 ServConnector.prototype.ER_NO_RET_FUNC='Return function is not defined.';
 
+ServConnector.prototype.ENCTYPES = {
+	ENCODED:"application/x-www-form-urlencoded",
+	MULTIPART:"multipart/form-data",
+	TEXT:"text-plain"
+};
+
 /* private members*/
 ServConnector.prototype.m_host;
 ServConnector.prototype.m_script;
@@ -44,8 +50,22 @@ ServConnector.prototype.getScript = function(){
 ServConnector.prototype.setScript = function(script){
 	this.m_script = script;
 }
-ServConnector.prototype.sendRequest = function(isGet,paramStr,async,
-	onReturn,retContext,xmlResponse){
+/**
+ * @public
+ * @returns {string}
+ * @param {Object} params 
+ */
+ServConnector.prototype.queryParamsAsStr = function(params,encode){
+	var paramStr = "";
+	for (var par_id in params){
+		paramStr+= (paramStr=="")? "":"&";
+		paramStr+= par_id+"=";
+		paramStr+= (encode)? encodeURIComponent(params[par_id]) : params[par_id];
+	}
+	return paramStr;
+}
+
+ServConnector.prototype.sendRequest = function(isGet,paramStr,async,onReturn,retContext,xmlResponse,enctype){
 	xmlResponse = (xmlResponse==undefined)? true:xmlResponse;
 	var request_id = uuid();
 	async = (async==undefined)? true : async;
@@ -65,6 +85,7 @@ ServConnector.prototype.sendRequest = function(isGet,paramStr,async,
 			var error_n = (status>=200 && status<300)? 0:status;
 			var error_s;
 			var resp;
+			
 			if (error_n==0){
 				//OK
 				try{
@@ -99,27 +120,60 @@ ServConnector.prototype.sendRequest = function(isGet,paramStr,async,
 		this.m_http.onreadystatechange = ready_func;
 	}
 	
+	var url = this.getHost() + this.getScript();
+	var send_param = null;
 	if (isGet){
-		//GET
-		this.m_http.open("get", this.getHost() +
-			this.getScript() +
-			((paramStr)? "?"+paramStr:""),
-			async);			
-		this.m_http.send(null);	
+		//GET		
+		if (paramStr&&paramStr.length)				
+			url = url +"?"+ paramStr;
+			//this.queryParamsAsStr(paramStr,true);
+		
 	}
-	else{
-		//POST multipart/form-data
-		var fd = new FormData();
-		for (var par_id in paramStr){
-			//console.log(par_id+"="+paramStr[par_id]);			
-			fd.append(par_id,paramStr[par_id]);			
-		}
-		this.m_http.open("POST",
-			this.getHost() +this.getScript(),
-			async);
-		//this.m_http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-		this.m_http.send(fd)		
+	
+	this.m_http.open(isGet? "GET":"POST", url, async);
+	
+	if(!isGet){
+		enctype = enctype || this.ENCTYPES.ENCODED;		
+		if (enctype==this.ENCTYPES.ENCODED){
+			this.m_http.setRequestHeader("Content-Type", enctype);
+			//encoded!!!
+			send_param = this.queryParamsAsStr(paramStr,false);
+			
+		}else if (enctype==this.ENCTYPES.MULTIPART){
+			if (typeof FormData !== 'undefined'){
+				send_param = new FormData();
+				for (var par_id in paramStr){
+					if (paramStr[par_id] && typeof paramStr[par_id]=="object"){						
+						//files
+						for (var fi=0;fi<paramStr[par_id].length;fi++){
+							send_param.append(par_id+"[]",paramStr[par_id][fi]);
+						}
+					}
+					else{
+						send_param.append(par_id,paramStr[par_id]);
+					}
+				}
+			}
+			else{
+				//no FormData
+				var boundary = String(Math.random()).slice(2);
+				var boundaryMiddle = '--' + boundary + '\r\n';
+				var boundaryLast = '--' + boundary + '--\r\n';
+				send_param = ['\r\n'];
+				for (var key in paramStr) {
+					send_param.push('Content-Disposition: form-data; name="' + key + '"\r\n\r\n' + paramStr[key] + '\r\n');
+				}
+				send_param = send_param.join(boundaryMiddle) + boundaryLast;
+				this.m_http.setRequestHeader('Content-Type', 'multipart/form-data; boundary=' + boundary);				
+			}
+		}		
+	
+		//orig
+		//send_param = this.queryParamsAsStr(paramStr,false);
+		//this.m_http.open("POST",url,async);
+		//this.m_http.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
 	}
+	this.m_http.send(send_param);
 	
 	if (!async){
 		ready_func.call(this);
@@ -128,9 +182,18 @@ ServConnector.prototype.sendRequest = function(isGet,paramStr,async,
 	return request_id;
 }
 /* in case of Post is a structure of parameters!*/
-ServConnector.prototype.sendPost = function(paramStr,async,onReturn,retContext,xmlResponse){
-	return this.sendRequest(false,paramStr,async,onReturn,retContext,xmlResponse);
+ServConnector.prototype.sendPost = function(paramStr,async,onReturn,retContext,xmlResponse,enctype){
+	return this.sendRequest(false,paramStr,async,onReturn,retContext,xmlResponse,enctype);
 }
-ServConnector.prototype.sendGet = function(paramStr,async,onReturn,retContext,xmlResponse){
-	return this.sendRequest(true,paramStr,async,onReturn,retContext,xmlResponse);
+ServConnector.prototype.sendGet = function(paramStr,async,onReturn,retContext,xmlResponse,enctype){
+	return this.sendRequest(true,paramStr,async,onReturn,retContext,xmlResponse,enctype);
 }
+
+ServConnector.prototype.openHref = function(params,winParams){
+	window.open(
+		this.getHost() + this.getScript() +"?"+ this.queryParamsAsStr(params,true),
+		"_blank",
+		winParams? winParams:"location=0,menubar=0,status=0,titlebar=0"
+	); 
+}
+

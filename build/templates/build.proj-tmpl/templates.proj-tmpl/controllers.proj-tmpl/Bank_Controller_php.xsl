@@ -19,10 +19,11 @@
 <xsl:call-template name="add_requirements"/>
 class <xsl:value-of select="@id"/>_Controller extends <xsl:value-of select="@parentId"/>{
 
-	const REFRESH_URL = 'http://cbrates.rbc.ru/bnk/bnk.zip';
+	//const REFRESH_URL = 'http://cbrates.rbc.ru/bnk/bnk.zip';
+	const REFRESH_URL = 'http://www.katren.org/crm/output/bnk.zip';
 
-	public function __construct($dbLinkMaster=NULL){
-		parent::__construct($dbLinkMaster);<xsl:apply-templates/>
+	public function __construct($dbLinkMaster=NULL,$dbLink=NULL){
+		parent::__construct($dbLinkMaster,$dbLink);<xsl:apply-templates/>
 	}	
 	<xsl:call-template name="extra_methods"/>
 }
@@ -142,7 +143,7 @@ class <xsl:value-of select="@id"/>_Controller extends <xsl:value-of select="@par
 	public static function delTree($dir) {
 		$files = array_diff(scandir($dir), array('.','..'));
 		foreach ($files as $file) {
-		(is_dir("$dir/$file")) ? delTree("$dir/$file") : unlink("$dir/$file");
+		(is_dir("$dir/$file")) ? self::delTree("$dir/$file") : unlink("$dir/$file");
 		}
 		return rmdir($dir);
 	} 
@@ -188,7 +189,7 @@ class <xsl:value-of select="@id"/>_Controller extends <xsl:value-of select="@par
 						$gor = cyr_str_decode($ar[2]);
 						//echo(sprintf(
 						$link->query(sprintf(						
-						"SELECT banks_upsert('%s'::text,NULL,'%s'::text,NULL,NULL,NULL,TRUE)",
+						"SELECT banks.banks_upsert('%s'::text,NULL,'%s'::text,NULL,NULL,NULL,TRUE)",
 						$gr_code,$gr_descr,$gor));//.PHP_EOL
 					}
 				    }
@@ -223,7 +224,7 @@ class <xsl:value-of select="@id"/>_Controller extends <xsl:value-of select="@par
 						
 						//echo(sprintf(
 						$link->query(sprintf(						
-						"SELECT banks_upsert('%s'::text,'%s'::text,'%s'::text,'%s'::text,NULL,'%s'::text,FALSE)",
+						"SELECT banks.banks_upsert('%s'::text,'%s'::text,'%s'::text,'%s'::text,NULL,'%s'::text,FALSE)",
 						$bik,substr($bik,2,2),$name,$korshet,$gor));//.PHP_EOL
 					}
 				    }

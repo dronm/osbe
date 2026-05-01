@@ -1,0 +1,33 @@
+-- Function: ra_{{REG_TABLE}}_add_act(ra_{{REG_TABLE}})
+
+-- DROP FUNCTION ra_{{REG_TABLE}}_add_act(ra_{{REG_TABLE}});
+
+CREATE OR REPLACE FUNCTION ra_{{REG_TABLE}}_add_act(reg_act ra_{{REG_TABLE}})
+  RETURNS void AS
+$BODY$
+	INSERT INTO ra_{{REG_TABLE}}
+	(date_time,doc_type,doc_id
+	,deb
+	{{#DIMENSIONS}}
+	,{{FIELD_ID}}
+	{{/DIMENSIONS}}
+	{{#FACTS}}
+	,{{FIELD_ID}}
+	{{/FACTS}}
+	)
+	VALUES (
+	reg_act.date_time,reg_act.doc_type,reg_act.doc_id
+	,reg_act.deb
+	{{#DIMENSIONS}}
+	,reg_act.{{FIELD_ID}}
+	{{/DIMENSIONS}}
+	{{#FACTS}}
+	,reg_act.{{FIELD_ID}}
+	{{/FACTS}}
+	);
+$BODY$
+  LANGUAGE sql VOLATILE STRICT
+  COST 100;
+ALTER FUNCTION ra_{{REG_TABLE}}_add_act(ra_{{REG_TABLE}})
+  OWNER TO ;
+

@@ -1,8 +1,14 @@
 <?php
-require_once(FRAME_WORK_PATH.'basic_classes/Validator.php');
+require_once(FRAME_WORK_PATH.'basic_classes/ValidatorString.php');
 
-class ValidatorTime extends Validator {
+class ValidatorTime extends ValidatorString {
+
 	public function validate($val){
+	
+		function add_zero($d){
+			return (($d<10)? '0':'').$d;
+		}
+	
 		$val = trim($val);
 		$l = strtolower($val);
 		if (!$val || !strlen($val) || $l=='undefined' || $l=='null'){
@@ -39,7 +45,9 @@ class ValidatorTime extends Validator {
 			$sec = 0;		
 		}
 				
-		return $h.$TIME_SEPARATOR.$min.$TIME_SEPARATOR.$sec;
+		$res = add_zero($h).$TIME_SEPARATOR.add_zero($min).$TIME_SEPARATOR.add_zero($sec);
+		
+		return parent::validate($res);
 	}	
 }
 

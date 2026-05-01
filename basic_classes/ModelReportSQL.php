@@ -144,5 +144,15 @@ class ModelReportSQL extends ModelSQL{
 		$this->rowCount = $link->num_rows($this->queryId);
 		$this->setRowBOF();				
 	}
+	
+	public function metadataToXML(){
+		$result = sprintf('<metadata modelId="%s">',$this->getId());
+		foreach($this->fields as $field){
+			$result.=$field->metadataToXML();
+		}
+		$result.='</metadata>';
+		return $result;
+	}
+	
 }
 ?>

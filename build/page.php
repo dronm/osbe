@@ -20,6 +20,7 @@
 	define('SBMT_LOG_LEVEL','log_level');
 	define('SBMT_BUILD_ALL','build_all');
 	define('SBMT_BUILD_JSDOC','build_jsdoc');
+	define('SBMT_ACT_LOG','act_log');
 	define('SBMT_DTD_VALID','dtd_valid');
 	define('SBMT_CREATE_SYMLINKS','create_symlinks');
 	define('SBMT_PULL','pull');
@@ -29,6 +30,8 @@
 	define('SBMT_ZIP_DB','zip_db');
 	define('SBMT_TAR_ZIPS','tar_zips');
 	define('SBMT_CLONE','clone');
+	define('SBMT_UPLOAD','upload');
+	
 	$js_vers = substr(USER_JS_PATH,0,strlen(USER_JS_PATH)-1);
 	echo 'JSVersion='.$js_vers.'</br>';
 	$proj_man = new ProjectManager(
@@ -94,7 +97,9 @@
 		print_log($log);
 		$log->dump();
 		
-		echo '<a href="index.php">Main</a>';
+		echo '<a href="index.php">Main</a>';		
+		echo '<a href="cat.php">Catalogue manager</a>';
+		echo '<a href="reg.php">Register manager</a>';
 		echo '<a href="package.php">Package manager</a>';
 	}
 	else if (isset($_REQUEST[SBMT_MIN_JS])){
@@ -116,6 +121,8 @@
 		print_log($log);
 		$log->dump();			
 		echo '<a href="index.php">Main</a>';
+		echo '<a href="cat.php">Catalogue manager</a>';
+		echo '<a href="reg.php">Register manager</a>';
 		echo '<a href="package.php">Package manager</a>';
 	}
 	else if (isset($_REQUEST[SBMT_BUILD_JSDOC])){
@@ -128,6 +135,8 @@
 		print_log($log);
 		$log->dump();			
 		echo '<a href="index.php">Main</a>';
+		echo '<a href="cat.php">Catalogue manager</a>';
+		echo '<a href="reg.php">Register manager</a>';
 		echo '<a href="package.php">Package manager</a>';
 	}
 	else if (isset($_REQUEST[SBMT_DTD_VALID])){
@@ -140,8 +149,25 @@
 		print_log($log);
 		$log->dump();			
 		echo '<a href="index.php">Main</a>';
+		echo '<a href="cat.php">Catalogue manager</a>';
+		echo '<a href="reg.php">Register manager</a>';
 		echo '<a href="package.php">Package manager</a>';
 	}	
+	else if (isset($_REQUEST[SBMT_ACT_LOG])){
+		try{
+			$proj_man->activityLog($log);
+		}
+		catch (Exception $e){
+			$log->add('Error! '.$e->getMessage());
+		}
+		print_log($log);
+		$log->dump();			
+		echo '<a href="index.php">Main</a>';
+		echo '<a href="cat.php">Catalogue manager</a>';
+		echo '<a href="reg.php">Register manager</a>';
+		echo '<a href="package.php">Package manager</a>';
+	}	
+	
 	else if (isset($_REQUEST[SBMT_CREATE_SYMLINKS])){
 		$proj_man->createSymlinks($log);
 		print_log($log);
@@ -183,6 +209,47 @@
 		$proj_man->clone_repo('',APP_NAME,$log);
 		print_log($log);
 		$log->dump();			
+		
+	}else if (isset($_REQUEST[SBMT_UPLOAD])){
+		try{
+			
+			if(!defined('PROD_HOSTS')){
+				throw new Exception('PROD_HOSTS variable not defined');
+			}
+			if(!defined('PROD_APP_START')){
+				throw new Exception('PROD_APP_START variable not defined');
+			}
+			if(!defined('PROD_APP_STOP')){
+				throw new Exception('PROD_APP_STOP variable not defined');
+			}
+			if(!defined('PROD_APP_DIR')){
+				throw new Exception('PROD_APP_DIR variable not defined');
+			}
+			if(!defined('DB_SERVER_MASTER')){
+				throw new Exception('DB_SERVER_MASTER variable not defined');
+			}
+
+			$hosts = explode(",", PROD_HOSTS);
+			$proj_man->upload_update(
+				array(
+					'HOSTS' => $hosts,
+					'DB_SERVER' => defined('PROD_DB_SERVER')? PROD_DB_SERVER : NULL,
+					'DB_USER' => defined('PROD_DB_USER')? PROD_DB_USER : DB_USER,
+					'DB_PASSWORD' => defined('PROD_DB_PASSWORD')? PROD_DB_PASSWORD : DB_PASSWORD,
+					'DB_NAME' => defined('PROD_DB_NAME')? PROD_DB_NAME : DB_NAME,
+					'APP_START' => PROD_APP_START,
+					'APP_STOP' => PROD_APP_STOP,
+					'DB_SERVER_MASTER' => DB_SERVER_MASTER,
+					'FILES' => defined('PROD_FILES')? explode(",", PROD_FILES) : NULL,
+					'APP_DIR' => defined('PROD_APP_DIR')? PROD_APP_DIR : NULL
+				),
+				$log
+			);			
+		}catch (Exception $e){
+			$log->add('Error! '.$e->getMessage());
+		}
+		print_log($log);
+		$log->dump();			
 	}
 		
 	if (!file_exists($proj_man->getMdFile())){
@@ -190,6 +257,8 @@
 		echo "<h4>Metadata file is not found.</h4>";
 	}
 	else{
+		echo '<a href="cat.php">Catalogue manager</a>';
+		echo '<a href="reg.php">Register manager</a>';
 		echo '<a href="package.php">Package manager</a>';
 		
 		$struc = array();
@@ -235,6 +304,7 @@
 			</div>
 			'.$vesr_open_cmd.'
 			<input type="submit" value="Create unified js,css" name="'.SBMT_MIN_JS.'"/>
+			<input type="submit" value="Activity log script" name="'.SBMT_ACT_LOG.'"/>
 			<input type="submit" value="JS documentation" name="'.SBMT_BUILD_JSDOC.'"/>
 			<input type="submit" value="DTD validation" name="'.SBMT_DTD_VALID.'"/>
 		</form>';	
@@ -247,6 +317,7 @@
 				<input type="radio" name="'.SBMT_LOG_LEVEL.'" value="warn"/>Warn</br>
 				<input type="radio" name="'.SBMT_LOG_LEVEL.'" value="note"/>Note</br>
 				<input type="submit" value="Build project (php,js)" name="'.SBMT_BUILD_ALL.'"/>				
+				<input type="submit" value="Upload update" name="'.SBMT_UPLOAD.'"/>
 				<input type="submit" value="Create all symlinks" name="'.SBMT_CREATE_SYMLINKS.'"/>
 				<input type="submit" value="Pull from repo" name="'.SBMT_PULL.'"/>
 				<input type="submit" value="Push to repo" name="'.SBMT_PUSH.'"/>

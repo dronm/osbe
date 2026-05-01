@@ -8,7 +8,8 @@
  * @param {Control} options.control edit Control
  * @param {Field} options.field
  * @param {Model} options.model
- * @param {array} options.keyIds 
+ * @param {array} options.keyIds
+ * @param {string} options.assocIndex
  */
 function DataBinding(options){
 	options = options || {};	
@@ -18,6 +19,7 @@ function DataBinding(options){
 	this.m_fieldId = options.fieldId;
 	this.m_model = options.model;
 	this.m_keyIds = options.keyIds;
+	this.m_assocIndex = options.assocIndex;
 }
 
 /* Constants */
@@ -72,3 +74,11 @@ DataBinding.prototype.getKeyIds = function(){
 DataBinding.prototype.setKeyIds = function(v){
 	this.m_keyIds = v;
 }
+DataBinding.prototype.getAssocIndex = function(){
+	return this.m_assocIndex;
+}
+
+DataBinding.prototype.setAssocIndex = function(v){
+	this.m_assocIndex = v;
+}
+

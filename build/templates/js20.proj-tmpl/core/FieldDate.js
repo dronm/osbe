@@ -23,5 +23,6 @@ extend(FieldDate,Field);
 FieldDate.prototype.XHR_FORMAT = "Y-m-d";
 
 FieldDate.prototype.getValueXHR = function(){
-	return DateHelper.format(this.getValue(), this.XHR_FORMAT);
+	var v = this.getValue();
+	return v? DateHelper.format(v, this.XHR_FORMAT):null;
 }

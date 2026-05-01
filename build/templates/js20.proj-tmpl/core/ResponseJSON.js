@@ -30,3 +30,12 @@ ResponseJSON.prototype.setResponse = function(resp){
 	
 	if (o)this.m_models = o.models;	
 }
+
+ResponseJSON.prototype.getModel = function(id,modelOptions){
+	if (this.modelExists(id) && !this.m_modelInstances[id]){
+		modelOptions = modelOptions || {};
+		modelOptions.data = this.m_models[id];		
+		this.m_modelInstances[id] = (window[id]? new window[id](modelOptions) : new ModelJSON(id,modelOptions));
+	}
+	return this.m_modelInstances[id];
+}

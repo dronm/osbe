@@ -1,0 +1,1 @@
+/home/andrey/go/gobizap/templates/build.proj-tmpl/templates.proj-tmpl/js.proj-tmpl/doc.proj-tmpl/DOCJs20_json.xsl

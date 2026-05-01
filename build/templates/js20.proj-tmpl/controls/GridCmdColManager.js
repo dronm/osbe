@@ -11,11 +11,11 @@
  * @requires controls/ViewGridColManager.js               
  
  * @param string id 
- * @param {namespace} options
- * @param {namespace} options.filters
+ * @param {object} options
+ * @param {object} options.filters
  * @param {GridCmd} options.controlSave
  * @param {GridCmd} options.controlOpen
- * @param {namespace} options.filters   
+ * @param {object} options.filters   
  */
 function GridCmdColManager(id,options){
 	options = options || {};	
@@ -24,19 +24,17 @@ function GridCmdColManager(id,options){
 	options.showCmdControl = false;
 	
 	this.m_variantStorageName = options.variantStorageName;
+	this.m_variantStorageModel = options.variantStorageModel;
+	if (this.m_variantStorageModel)this.m_variantStorageModel.getRow(0);
 	
 	//this.m_filter = new ModelFilter({"filters":v})
 	
 	GridCmdColManager.superclass.constructor.call(this,id,options);
 
-	if (options.variantStorageModel && options.variantStorageModel.getRow(0)){
-		//!!!ИСПРАВЛЕНО!!!
-		var s = "";//options.variantStorageModel.getFieldValue(this.VISIB_ID);
-		this.m_colVisibility = (s.length)? CommonHelper.unserialize(s):[];
-		
-		//!!!ИСПРАВЛЕНО!!!
-		s = "";//options.variantStorageModel.getFieldValue(this.VISIB_ID);
-		this.m_colOrder = (s.length)? CommonHelper.unserialize(s):[];
+	
+	//if (options.variantStorageModel && options.variantStorageModel.getRow(0)){
+	//	this.m_colVisibility = options.variantStorageModel.getFieldValue(this.VISIB_ID);
+	//	this.m_colOrder = options.variantStorageModel.getFieldValue(this.VISIB_ID);		
 		/*
 		var set_cnt = this.m_filter.unserialize(options.variantStorageModel.getFieldValue("filter_data"));
 		this.afterFilterSet(set_cnt);
@@ -44,11 +42,7 @@ function GridCmdColManager(id,options){
 		//	this.m_filter.applyFilters(this.m_grid);
 		}
 		*/
-	}
-	else{
-		this.m_colVisibility = [];
-		this.m_colOrder = [];
-	}			
+	//}
 }
 extend(GridCmdColManager,GridCmd);
 
@@ -56,6 +50,7 @@ extend(GridCmdColManager,GridCmd);
 GridCmdColManager.prototype.m_colManForm;
 
 GridCmdColManager.prototype.m_variantStorageName;
+GridCmdColManager.prototype.m_variantStorageModel;
 
 /* Constants */
 GridCmdColManager.prototype.VISIB_ID = "col_visib_data";
@@ -109,13 +104,17 @@ GridCmdColManager.prototype.m_filter;
 GridCmdColManager.prototype.BTN_FILTER_CLASS_SET = "btn-danger";
 GridCmdColManager.prototype.BTN_FILTER_CLASS_UNSET = "btn-primary";
 
+GridCmdColManager.prototype.getCol = function(id){
+	return (this.m_variantStorageModel? this.m_variantStorageModel.getFieldValue(id) : null);
+}
+
 
 /* public methods */
 GridCmdColManager.prototype.getColOrder = function(){
-	return this.m_colOrder;
+	return this.getCol(this.ORDER_ID);
 }
 GridCmdColManager.prototype.getColVisibility = function(){
-	return this.m_colVisibility;
+	return this.getCol(this.VISIB_ID);
 }
 
 GridCmdColManager.prototype.init = function(){
@@ -125,26 +124,28 @@ GridCmdColManager.prototype.init = function(){
 		var columns = head_row.getInitColumns();
 		
 		//add descr
+		var col_visib_data = this.getColVisibility() || [];
 		var vis_cols = {};
-		for (var ind=0;ind<this.m_colVisibility.length;ind++){
-			var col = this.m_colVisibility[ind].colId;
-			//this.m_colVisibility[ind].descr = columns[col].getValue();
-			this.m_colVisibility[ind].colRef = columns[col];
+		for (var ind=0;ind<col_visib_data.length;ind++){
+			var col = col_visib_data[ind].colId;
+			//col_visib_data[ind].descr = columns[col].getValue();
+			col_visib_data[ind].colRef = columns[col];
 			vis_cols[col] = col;
 		}
 
 		//add order
+		var col_order_data = this.getColOrder() || [];
 		var ord_cols = {};
-		for (var ind=0;ind<this.m_colOrder.length;ind++){
-			var col = this.m_colOrder[ind].colId;
-			this.m_colOrder[ind][ind].colRef = columns[col];
+		for (var ind=0;ind<col_order_data.length;ind++){
+			var col = col_order_data[ind].colId;
+			col_order_data[ind][ind].colRef = columns[col];
 			ord_cols[col] = col;
 		}
 		
 		for (var col in columns){		
 			//visibility
 			if (!vis_cols[col]){
-				this.m_colVisibility.push({
+				col_visib_data.push({
 					"colId":col,
 					"checked":true,
 					"colRef":columns[col]
@@ -168,7 +169,7 @@ GridCmdColManager.prototype.init = function(){
 					}
 				}
 			
-				this.m_colOrder.push({
+				col_order_data.push({
 					"colId":col,
 					"fields":sort_cols,
 					"directs":sort_dir,
@@ -222,9 +223,23 @@ GridCmdColManager.prototype.onResetFilters = function(){
 	this.afterFilterSet(0);
 	this.refreshGrid();
 }
-GridCmdColManager.prototype.onVariantSave = function(){
-	alert("GridCmdColManager.prototype.onVariantSave")
-}
 GridCmdColManager.prototype.onVariantOpen = function(){
-	alert("GridCmdColManager.prototype.onVariantOpen")
+	var self = this;
+	(new VariantStorage({
+		"variantStorageName":this.m_variantStorageName,
+		"afterFormClose":function(model){
+			delete self.m_variantStorageModel;
+			self.m_variantStorageModel = model;
+			self.m_view.refresh();
+		}
+	})).openStorage();
+}
+
+GridCmdColManager.prototype.onVariantSave = function(){
+	var vals = {};
+	vals[this.VISIB_ID] = this.getColVisibility();
+	vals[this.ORDER_ID] = this.getColOrder();
+	(new VariantStorage({
+		"variantStorageName":this.m_variantStorageName
+	})).saveStorage("all_data",vals);
 }

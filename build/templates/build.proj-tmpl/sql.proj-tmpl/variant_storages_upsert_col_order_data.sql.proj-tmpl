@@ -1,4 +1,4 @@
-﻿-- Function: variant_storages_upsert_col_order_data(in_user_id int, in_storage_name text, in_variant_name text, in_col_order_data text, in_default_variant boolean)
+-- Function: variant_storages_upsert_col_order_data(in_user_id int, in_storage_name text, in_variant_name text, in_col_order_data text, in_default_variant boolean)
 
 --DROP FUNCTION variant_storages_upsert_col_order_data(in_user_id int, in_storage_name text, in_variant_name text, in_col_order_data text, in_default_variant boolean);
 

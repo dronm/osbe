@@ -15,7 +15,6 @@ function ValidatorTime(options){
 extend(ValidatorTime,ValidatorDate);
 
 ValidatorTime.prototype.correctValue = function(v){
-	if (!v)return DateHelper.time();
 	if (v instanceof Date) return v;
 	return DateHelper.strtotime("1970-01-01T"+v);
 }

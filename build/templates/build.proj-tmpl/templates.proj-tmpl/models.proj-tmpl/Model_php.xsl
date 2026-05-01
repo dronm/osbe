@@ -16,6 +16,7 @@
 <xsl:call-template name="add_requirements"/> 
 class <xsl:value-of select="@id"/>_Model extends <xsl:value-of select="@parent"/>{
 	<xsl:call-template name="add_constructor"/>
+	<xsl:call-template name="user_functions"/>
 }
 <![CDATA[?>]]>
 </xsl:template>
@@ -94,7 +95,7 @@ class <xsl:value-of select="@id"/>_Model extends <xsl:value-of select="@parent"/
 		</xsl:if>		
 		<xsl:if test="not($autoInc='')">$f_opts['autoInc']=<xsl:value-of select="$autoInc"/>;
 		</xsl:if>		
-		<xsl:if test="not($alias)">
+		<xsl:if test="not($alias='')">
 		$f_opts['alias']='<xsl:value-of select="$alias"/>';
 		</xsl:if>		
 		<xsl:if test="not($length='')">$f_opts['length']=<xsl:value-of select="$length"/>;
@@ -108,7 +109,9 @@ class <xsl:value-of select="@id"/>_Model extends <xsl:value-of select="@parent"/
 		<xsl:if test="@id">$f_opts['id']="<xsl:value-of select="@id"/>";
 		</xsl:if>
 		<xsl:if test="@retAfterInsert">$f_opts['retAfterInsert']=<xsl:value-of select="@retAfterInsert"/>;
-		</xsl:if>		
+		</xsl:if>
+		<xsl:if test="@noValueOnCopy='TRUE'">$f_opts['noValueOnCopy'] = TRUE;
+		</xsl:if>				
 		$f_<xsl:value-of select="@id"/>=new FieldSQL<xsl:value-of select="$dataType"/>($this->getDbLink(),$this->getDbName(),$this->getTableName(),"<xsl:value-of select="@id"/>",$f_opts);
 		$this->addField($f_<xsl:value-of select="@id"/>);
 		//********************
@@ -180,7 +183,14 @@ require_once(FRAME_WORK_PATH.'basic_classes/<xsl:value-of select="@parent"/>.php
 	public function __construct($dbLink){
 		parent::__construct($dbLink);
 		
-		$this->setDbName("<xsl:choose><xsl:when test="@dataSchema"><xsl:value-of select="@dataSchema"/></xsl:when><xsl:when test="/metadata/@dataSchema"><xsl:value-of select="/metadata/@dataSchema"/></xsl:when><xsl:otherwise></xsl:otherwise></xsl:choose>");
+		<xsl:variable name="db_schema">
+		<xsl:choose>
+			<xsl:when test="@dataSchema"><xsl:value-of select="@dataSchema"/></xsl:when>
+			<xsl:when test="/metadata/@dataSchema"><xsl:value-of select="/metadata/@dataSchema"/></xsl:when>
+			<xsl:otherwise></xsl:otherwise>
+		</xsl:choose>
+		</xsl:variable>
+		$this->setDbName('<xsl:value-of select="$db_schema"/>');
 		
 		$this->setTableName("<xsl:value-of select="@dataTable"/>");
 		<xsl:if test="@baseModelId">
@@ -196,7 +206,8 @@ require_once(FRAME_WORK_PATH.'basic_classes/<xsl:value-of select="@parent"/>.php
 		<xsl:when test="../@limitConstant">$this->setLimitConstant('<xsl:value-of select="../@limitConstant"/>');</xsl:when>		
 		<xsl:otherwise></xsl:otherwise>
 		</xsl:choose>
-		
+		<xsl:if test="@calcHash">
+		$this->setCalcHash(<xsl:value-of select="@calcHash"/>);</xsl:if>		
 		<xsl:if test="@lastRowSelectOnInit">
 		$this->setLastRowSelectOnInit(<xsl:value-of select="@lastRowSelectOnInit"/>);</xsl:if>
 		
@@ -226,13 +237,16 @@ require_once(FRAME_WORK_PATH.'basic_classes/<xsl:value-of select="@parent"/>.php
 </xsl:template>
 
 <xsl:template match="aggFunctions">
-	$this->addAggFunction(
-		<xsl:apply-templates select="aggFunction"/>
+	$this->setAggFunctions(
+		array(<xsl:apply-templates select="aggFunction"/>)
 	);	
 </xsl:template>
 
 <xsl:template match="aggFunction">
 	<xsl:if test="position() &gt;1">,</xsl:if>array('alias'=>'<xsl:value-of select="@alias"/>','expr'=>'<xsl:value-of select="@expr"/>')
+</xsl:template>
+
+<xsl:template name="user_functions">
 </xsl:template>
 
 </xsl:stylesheet>

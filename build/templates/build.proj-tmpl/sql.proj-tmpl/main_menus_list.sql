@@ -1,8 +1,8 @@
--- View: main_menus_list
+-- View: public.main_menus_list
 
--- DROP VIEW main_menus_list;
+-- DROP VIEW public.main_menus_list;
 
-CREATE OR REPLACE VIEW main_menus_list AS 
+CREATE OR REPLACE VIEW public.main_menus_list AS 
  SELECT m.id,
     m.role_id,
     m.user_id,
@@ -11,5 +11,4 @@ CREATE OR REPLACE VIEW main_menus_list AS
      LEFT JOIN users u ON u.id = m.user_id
   ORDER BY m.role_id, u.name;
 
-ALTER TABLE main_menus_list OWNER TO ;
-
+ALTER TABLE public.main_menus_list OWNER TO ;

@@ -10,7 +10,7 @@
  * @requires controls/ControlContainer.js
  
  * @param string id 
- * @param {namespace} options
+ * @param {object} options
  * @param {string} options.variantStorageName
  */
 function VariantStorageOpenView(id,options){
@@ -21,15 +21,15 @@ function VariantStorageOpenView(id,options){
 	this.m_onClose = options.onClose;
 
 	var model = new VariantStorageList_Model();
-	var contr = new VariantStorage_Controller(window.getApp());
+	var contr = new VariantStorage_Controller();
 	var pm = contr.getPublicMethod("get_list");
 	pm.setFieldValue("storage_name",options.variantStorageName);
 	
-	VariantStorageOpenView.superclass.constructor.call(this,id,"template",options);
+	VariantStorageOpenView.superclass.constructor.call(this,id,"TEMPLATE",options);
 
 	this.addElement(new GridAjx(id+":variants",{
 		"model":model,
-		"keyIds":["storage_name"],
+		//"keyIds":["id"],//storage_name
 		"controller":contr,
 		"editInline":null,
 		"editWinClass":null,
@@ -42,19 +42,27 @@ function VariantStorageOpenView(id,options){
 			"cmdCopy":false,
 			"cmdPrint":false,
 			"cmdRefresh":false,
-			"cmdExport":false,
-			"app":window.getApp()
+			"cmdExport":false
 		}),		
-		"head":new GridHead(id+"-variants:head",{
+		"head":new GridHead(id+":variants:head",{
 			"elements":[
 				new GridRow(id+":variants:head:row0",{
 					"elements":[
-						new GridCellHead(id+":variants:head:variant_name",{
+						new GridCellHead(id+":variants:head:row0:variant_name",{
 							"columns":[
-								new GridColumn("variant_name",{"field":model.getField("variant_name")})
+								new GridColumn({"field":model.getField("variant_name")})
 							],
 							"sortable":true
 						})
+						,new GridCellHead(id+":variants:head:row0:default_variant",{
+							"columns":[
+								new GridColumnBool({
+									"field":model.getField("default_variant")
+									,"showFalse":false
+								})
+							]
+						})
+						
 					]
 				})
 			]
@@ -64,8 +72,7 @@ function VariantStorageOpenView(id,options){
 		"refreshInterval":0,
 		"rowSelect":true,
 		"focus":true,
-		"onSelect":options.onSelect,
-		"app":window.getApp()
+		"onSelect":options.onSelect
 	}));	
 			
 }

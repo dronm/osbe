@@ -12,7 +12,6 @@
 function ConstantList_View(id,options){	
 
 	ConstantList_View.superclass.constructor.call(this,id,options);
-	
 	this.addElement(
 		new ConstantGrid(id+":grid",{"model":options.models.ConstantList_Model})
 	);	

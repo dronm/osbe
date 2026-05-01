@@ -1,0 +1,154 @@
+-- Function: rg_{{REG_TABLE}}_balance(timestampTZ{{#DIMENSIONS}},{{FIELD_SQL_DATA_TYPE}}[]{{/DIMENSIONS}})
+
+-- DROP FUNCTION rg_{{REG_TABLE}}_balance(timestampTZ{{#DIMENSIONS}},{{FIELD_SQL_DATA_TYPE}}[]{{/DIMENSIONS}});
+
+CREATE OR REPLACE FUNCTION rg_{{REG_TABLE}}_balance(
+    IN in_date_time timestampTZ
+    {{#DIMENSIONS}}
+    ,IN in_{{FIELD_ID}}_ar {{FIELD_SQL_DATA_TYPE}}[]
+    {{/DIMENSIONS}}
+    )
+  RETURNS TABLE(
+  	{{#DIMENSIONS}}
+  	{{#NOT_FIRST}},{{/NOT_FIRST}}{{FIELD_ID}} {{FIELD_SQL_DATA_TYPE}}
+  	{{/DIMENSIONS}}
+  	{{#FACTS}}
+  	,{{FIELD_ID}} {{FIELD_SQL_DATA_TYPE}}
+  	{{/FACTS}}  	
+  	) AS
+$BODY$
+	WITH
+	last_calc_per AS (SELECT rg_period_balance('{{REG_ID}}'::reg_types, rg_calc_period('{{REG_ID}}'::reg_types)) AS v ),
+	cur_per AS (SELECT rg_calc_period_start('{{REG_ID}}'::reg_types, in_date_time::timestamp without time zone) AS v ),
+	next_per AS (SELECT rg_calc_period_start('{{REG_ID}}'::reg_types, (SELECT v FROM cur_per)+rg_calc_interval('{{REG_ID}}'::reg_types)) AS v ),
+	act_forward AS (
+		SELECT
+			rg_period_balance('{{REG_ID}}'::reg_types,in_date_time::timestamp without time zone) - in_date_time >
+			in_date_time - (SELECT t.v FROM cur_per t)
+			AS v
+	),
+	act_sg AS (SELECT CASE WHEN t.v THEN 1 ELSE -1 END AS v FROM act_forward t)
+	SELECT
+		{{#DIMENSIONS}} 
+		{{#NOT_FIRST}},{{/NOT_FIRST}}sub.{{FIELD_ID}}
+		{{/DIMENSIONS}}
+		{{#FACTS}}
+		,SUM(sub.{{FIELD_ID}})::{{FIELD_SQL_DATA_TYPE}} AS {{FIELD_ID}}
+		{{/FACTS}}
+	FROM(
+		-- *** BALANCE ***
+		(SELECT
+			{{#DIMENSIONS}} 
+			{{#NOT_FIRST}},{{/NOT_FIRST}}b.{{FIELD_ID}}
+			{{/DIMENSIONS}} 
+			{{#FACTS}}
+			,b.{{FIELD_ID}}
+			{{/FACTS}}
+		FROM rg_{{REG_TABLE}} AS b
+		WHERE
+		(
+			--date bigger than last calc period
+			( in_date_time > (SELECT v FROM last_calc_per) AND b.date_time = (SELECT rg_current_balance_time()) )
+			OR (
+				in_date_time <= (SELECT v FROM last_calc_per)
+				AND (				
+					--forward from previous period
+					( (SELECT t.v FROM act_forward t) AND b.date_time = (SELECT t.v FROM cur_per t)-rg_calc_interval('{{REG_ID}}'::reg_types)
+					)
+					--backward from current
+					OR			
+					( NOT (SELECT t.v FROM act_forward t) AND b.date_time = (SELECT t.v FROM cur_per t)
+					)
+				)
+			)
+		)
+		{{#DIMENSIONS}}
+		AND ( in_{{FIELD_ID}}_ar IS NULL OR coalesce(array_length(in_{{FIELD_ID}}_ar,1),0)=0 OR (b.{{FIELD_ID}}=ANY(in_{{FIELD_ID}}_ar)))
+		{{/DIMENSIONS}} 
+		AND (
+			{{#FACTS}}
+			{{#NOT_FIRST}} OR {{/NOT_FIRST}}b.{{FIELD_ID}}<>0
+			{{/FACTS}}
+		)
+		)
+		
+		UNION ALL
+		
+		-- *** ACTS ***
+		(SELECT
+			{{#DIMENSIONS}} 	
+			{{#NOT_FIRST}},{{/NOT_FIRST}}act.{{FIELD_ID}}
+			{{/DIMENSIONS}}
+		{{#FACTS}}	
+		,CASE act.deb
+			WHEN TRUE THEN act.{{FIELD_ID}} * (SELECT t.v FROM act_sg t)
+			ELSE -act.{{FIELD_ID}} * (SELECT t.v FROM act_sg t)
+		END AS quant
+		{{/FACTS}}
+		
+		FROM doc_log
+		LEFT JOIN ra_{{REG_TABLE}} AS act ON act.doc_type=doc_log.doc_type AND act.doc_id=doc_log.doc_id
+		WHERE
+		--date less then last calc period otherwise - no actions
+		in_date_time <= (SELECT v FROM last_calc_per)
+		AND 
+		(
+			--forward from current period
+			( (SELECT t.v FROM act_forward t) AND
+					act.date_time >= (SELECT t.v FROM cur_per t)
+					AND act.date_time <= 
+						(SELECT l.date_time
+						FROM doc_log l
+						WHERE date_trunc('second',l.date_time)<=date_trunc('second',in_date_time)
+						ORDER BY l.date_time DESC
+						LIMIT 1
+						)
+			)
+			--backward from next period
+			OR			
+			( NOT (SELECT t.v FROM act_forward t) AND
+					act.date_time >= 
+						(SELECT l.date_time
+						FROM doc_log l
+						WHERE date_trunc('second',l.date_time)>=date_trunc('second',in_date_time)
+						ORDER BY l.date_time ASC
+						LIMIT 1
+						)			
+					AND act.date_time <= (SELECT t.v FROM next_per t)
+			)
+		)
+		{{#DIMENSIONS}}
+		AND ( in_{{FIELD_ID}}_ar IS NULL OR coalesce(array_length(in_{{FIELD_ID}}_ar,1),0)=0 OR (act.{{FIELD_ID}}=ANY(in_{{FIELD_ID}}_ar)))
+		{{/DIMENSIONS}}
+		AND (
+			{{#FACTS}}
+			{{#NOT_FIRST}} OR {{/NOT_FIRST}}act.{{FIELD_ID}}<>0
+			{{/FACTS}}
+		)
+		ORDER BY doc_log.date_time,doc_log.id
+		)
+	) AS sub
+	WHERE
+		{{#DIMENSIONS}}
+		{{#NOT_FIRST}} AND {{/NOT_FIRST}}( in_{{FIELD_ID}}_ar IS NULL OR coalesce(array_length(in_{{FIELD_ID}}_ar,1),0)=0 OR (sub.{{FIELD_ID}}=ANY(in_{{FIELD_ID}}_ar)))
+		{{/DIMENSIONS}}
+	GROUP BY
+		{{#DIMENSIONS}}
+		{{#NOT_FIRST}},{{/NOT_FIRST}}sub.{{FIELD_ID}}
+		{{/DIMENSIONS}}
+	HAVING
+		{{#FACTS}}
+		{{#NOT_FIRST}} OR {{/NOT_FIRST}}SUM(sub.{{FIELD_ID}})<>0
+		{{/FACTS}}
+	ORDER BY
+		{{#DIMENSIONS}}
+		{{#NOT_FIRST}},{{/NOT_FIRST}}sub.{{FIELD_ID}}
+		{{/DIMENSIONS}}
+	;
+$BODY$
+  LANGUAGE sql VOLATILE CALLED ON NULL INPUT
+  COST 100
+  ROWS 1000;
+ALTER FUNCTION rg_{{REG_TABLE}}_balance(timestampTZ{{#DIMENSIONS}},{{FIELD_SQL_DATA_TYPE}}[]{{/DIMENSIONS}})
+  OWNER TO ;
+
